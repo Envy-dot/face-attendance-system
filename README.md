@@ -1,4 +1,4 @@
-# Face Attendance System
+# FaceAttend
 
 A biometric attendance tracking application that leverages facial recognition technology to securely log user attendance. This system consists of a React-based frontend for capturing facial data and an Express backend for managing attendance records and user profiles.
 
