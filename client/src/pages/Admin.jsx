@@ -8,6 +8,9 @@ function Admin() {
     const [sessionHistory, setSessionHistory] = useState([]);
     const [activeTab, setActiveTab] = useState('logs');
 
+    // Modal
+    const [selectedSessionStats, setSelectedSessionStats] = useState(null);
+
     // Form inputs
     const [newSessionName, setNewSessionName] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -33,7 +36,31 @@ function Admin() {
         if (searchQuery) url += `?search=${searchQuery}`;
         const res = await fetch(url);
         const data = await res.json();
-        setLogs(data);
+
+        // Group logs for display: Session + Matric No
+        // This is a client-side grouping processing
+        const grouped = {};
+        data.forEach(log => {
+            const key = `${log.session_name || 'N/A'}_${log.matric_no || 'Unknown'}`;
+            if (!grouped[key]) {
+                grouped[key] = {
+                    ...log, // Keep base info
+                    in_time: null,
+                    out_time: null,
+                    in_id: null,
+                    out_id: null
+                };
+            }
+            if (log.type === 'in') {
+                grouped[key].in_time = log.timestamp;
+                grouped[key].in_id = log.id;
+            } else if (log.type === 'out') {
+                grouped[key].out_time = log.timestamp;
+                grouped[key].out_id = log.id;
+            }
+        });
+
+        setLogs(Object.values(grouped));
     };
 
     const fetchActiveSession = async () => {
@@ -46,6 +73,16 @@ function Admin() {
         const res = await fetch('/api/sessions/history');
         const data = await res.json();
         setSessionHistory(data);
+    };
+
+    const getSessionStats = async (sessionId) => {
+        try {
+            const res = await fetch(`/api/sessions/${sessionId}/stats`);
+            const data = await res.json();
+            setSelectedSessionStats(data);
+        } catch (err) {
+            console.error("Failed to fetch stats", err);
+        }
     };
 
     const createSession = async (type) => {
@@ -61,6 +98,15 @@ function Admin() {
         alert(`${type === 'in' ? 'Sign In' : 'Sign Out'} Session Started!`);
     };
 
+    const toggleSessionType = async (id) => {
+        if (!window.confirm("Switch Active Session Mode?")) return;
+        const res = await fetch(`/api/sessions/${id}/type`, { method: 'PUT' });
+        const data = await res.json();
+        if (data.success) {
+            fetchActiveSession();
+        }
+    };
+
     const endSession = async (id) => {
         if (!window.confirm("End this session?")) return;
         await fetch('/api/sessions', {
@@ -73,19 +119,20 @@ function Admin() {
     };
 
     const deleteSession = async (id) => {
-        if (!window.confirm("Delete this session record?")) return;
+        if (!window.confirm("Delete this session record? This action cannot be undone.")) return;
         await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
         fetchSessionHistory();
     };
 
     const deleteUser = async (id) => {
-        if (!window.confirm('Delete this user?')) return;
+        if (!window.confirm('Delete this user? All their attendance records will also be deleted.')) return;
         await fetch(`/api/users/${id}`, { method: 'DELETE' });
         fetchUsers();
     };
 
     const deleteLog = async (id) => {
-        if (!window.confirm('Delete this record?')) return;
+        if (!id) return;
+        if (!window.confirm('Delete this specific log entry?')) return;
         await fetch(`/api/attendance/${id}`, { method: 'DELETE' });
         fetchLogs();
     };
@@ -105,84 +152,114 @@ function Admin() {
         window.open('http://localhost:3000/api/export', '_blank');
     };
 
-    // Styling helpers
-    const tabClass = (tab) => activeTab === tab ? 'btn btn-primary' : 'btn btn-secondary';
-    const cellStyle = { padding: '0.8rem', borderBottom: '1px solid #333' };
-
     return (
-        <div className="page-container" style={{ maxWidth: '1200px', margin: '0 auto', fontSize: '0.9rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div className="page-container">
+            {/* Header / Stats */}
+            <div className="glass-panel" style={{ width: '100%', boxSizing: 'border-box', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
-                    <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>Admin Dashboard</h2>
+                    <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 700, background: 'linear-gradient(90deg, #fff, #a5b4fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                        Admin Dashboard
+                    </h2>
                     {activeSession ? (
-                        <div style={{ color: '#4ade80', background: '#22c55e22', padding: '4px 12px', borderRadius: '12px', display: 'inline-block', fontSize: '0.8rem' }}>
-                            ● Active: {activeSession.name} ({activeSession.type.toUpperCase()})
+                        <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span className="badge badge-success">● Active Session</span>
+                            <span style={{ fontWeight: 600 }}>{activeSession.name}</span>
+                            <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>({activeSession.type === 'in' ? 'Sign In' : 'Sign Out'})</span>
                         </div>
-                    ) : <span style={{ color: '#f87171' }}>● No Active Session</span>}
+                    ) : (
+                        <div style={{ marginTop: '0.5rem', color: 'var(--text-secondary)' }}>● No active session</div>
+                    )}
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className={tabClass('logs')} onClick={() => setActiveTab('logs')}>Logs</button>
-                    <button className={tabClass('users')} onClick={() => setActiveTab('users')}>Users</button>
-                    <button className={tabClass('sessions')} onClick={() => setActiveTab('sessions')}>Sessions</button>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                    {['logs', 'users', 'sessions'].map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={activeTab === tab ? 'btn btn-primary' : 'btn btn-secondary'}
+                            style={{ textTransform: 'capitalize' }}
+                        >
+                            {tab}
+                        </button>
+                    ))}
                 </div>
             </div>
 
-            <div className="card" style={{ padding: '0', overflow: 'hidden', border: '1px solid #333' }}>
+            {/* Content Area */}
+            <div className="glass-panel" style={{ width: '100%', boxSizing: 'border-box', padding: '0' }}>
+
                 {activeTab === 'logs' && (
-                    <div style={{ padding: '1rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <div style={{ padding: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                            <div style={{ display: 'flex', gap: '0.5rem', flex: 1 }}>
                                 <input
-                                    placeholder="Search Name or Matric..."
+                                    placeholder="Search by Name or Matric No..."
                                     value={searchQuery}
                                     onChange={e => setSearchQuery(e.target.value)}
-                                    style={{ padding: '0.5rem', background: '#222', border: '1px solid #444', color: 'white', borderRadius: '6px' }}
+                                    style={{ maxWidth: '300px' }}
                                 />
                                 <button className="btn btn-secondary" onClick={fetchLogs}>Search</button>
                             </div>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <input type="date" value={bulkDate} onChange={e => setBulkDate(e.target.value)} style={{ padding: '0.5rem', borderRadius: '6px', background: '#222', border: '1px solid #444', color: 'white' }} />
-                                <button className="btn btn-secondary" style={{ background: '#7f1d1d', color: '#fca5a5' }} onClick={deleteBulk}>Clear Date</button>
-                                <button className="btn btn-primary" onClick={exportData}>Export XLSX</button>
+                                <input type="date" value={bulkDate} onChange={e => setBulkDate(e.target.value)} style={{ width: 'auto' }} />
+                                <button className="btn btn-danger" onClick={deleteBulk}>Delete Day</button>
+                                <button className="btn btn-primary" onClick={exportData}>Export Excel</button>
                             </div>
                         </div>
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                                <thead style={{ background: '#111', textTransform: 'uppercase', color: '#888' }}>
+
+                        <div className="table-container">
+                            <table>
+                                <thead>
                                     <tr>
-                                        <th style={cellStyle}>Photo</th>
-                                        <th style={cellStyle}>Matric No</th>
-                                        <th style={cellStyle}>Name</th>
-                                        <th style={cellStyle}>Time</th>
-                                        <th style={cellStyle}>Type</th>
-                                        <th style={cellStyle}>Session</th>
-                                        <th style={cellStyle}>Action</th>
+                                        <th>Photo</th>
+                                        <th>Student Info</th>
+                                        <th>Session</th>
+                                        <th>IN</th>
+                                        <th>OUT</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {logs.map(log => (
-                                        <tr key={log.id} style={{ transition: 'background 0.2s' }}>
-                                            <td style={cellStyle}>
-                                                {log.image ? <img src={log.image} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} /> : '-'}
+                                    {logs.map((log, index) => (
+                                        <tr key={index}>
+                                            <td>
+                                                {log.image ? <img src={log.image} style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--glass-border)' }} /> : '-'}
                                             </td>
-                                            <td style={cellStyle}>{log.matric_no || 'N/A'}</td>
-                                            <td style={cellStyle}>
-                                                <div>{log.name}</div>
-                                                <div style={{ fontSize: '0.75rem', opacity: 0.5 }}>{log.department} - {log.level}</div>
+                                            <td>
+                                                <div style={{ fontWeight: 600 }}>{log.name}</div>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{log.matric_no || 'No Matric'}</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{log.department}</div>
                                             </td>
-                                            <td style={cellStyle}>{new Date(log.timestamp).toLocaleString(undefined, { timeStyle: 'short', dateStyle: 'short' })}</td>
-                                            <td style={cellStyle}>
-                                                <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '0.7rem', background: log.type === 'in' ? '#22c55e22' : '#f8717122', color: log.type === 'in' ? '#4ade80' : '#f87171' }}>
-                                                    {log.type.toUpperCase()}
-                                                </span>
+                                            <td>{log.session_name}</td>
+                                            <td>
+                                                {log.in_time ? (
+                                                    <div>
+                                                        <span className="badge badge-success">IN</span>
+                                                        <div style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>
+                                                            {new Date(log.in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
+                                                    </div>
+                                                ) : '-'}
                                             </td>
-                                            <td style={cellStyle}>{log.session_name}</td>
-                                            <td style={cellStyle}>
-                                                <button onClick={() => deleteLog(log.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
+                                            <td>
+                                                {log.out_time ? (
+                                                    <div>
+                                                        <span className="badge badge-danger">OUT</span>
+                                                        <div style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>
+                                                            {new Date(log.out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
+                                                    </div>
+                                                ) : '-'}
+                                            </td>
+                                            <td>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                    {log.in_id && <button onClick={() => deleteLog(log.in_id)} className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}>Delete IN</button>}
+                                                    {log.out_id && <button onClick={() => deleteLog(log.out_id)} className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}>Delete OUT</button>}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
+                                    {logs.length === 0 && <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', opacity: 0.5 }}>No logs found matching your criteria</td></tr>}
                                 </tbody>
                             </table>
                         </div>
@@ -190,103 +267,126 @@ function Admin() {
                 )}
 
                 {activeTab === 'users' && (
-                    <div style={{ padding: '1rem' }}>
-                        <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem' }}>
+                    <div style={{ padding: '1.5rem' }}>
+                        <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem' }}>
                             <input
                                 placeholder="Search Users..."
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
-                                style={{ padding: '0.5rem', background: '#222', border: '1px solid #444', color: 'white', borderRadius: '6px', width: '300px' }}
+                                style={{ maxWidth: '400px' }}
                             />
                             <button className="btn btn-secondary" onClick={fetchUsers}>Search</button>
                         </div>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                            <thead style={{ background: '#111', color: '#888' }}>
-                                <tr>
-                                    <th style={cellStyle}>Photo</th>
-                                    <th style={cellStyle}>Matric No</th>
-                                    <th style={cellStyle}>Name</th>
-                                    <th style={cellStyle}>Details</th>
-                                    <th style={cellStyle}>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {users.map(user => (
-                                    <tr key={user.id}>
-                                        <td style={cellStyle}>
-                                            {user.photo ? <img src={user.photo} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} /> : <div style={{ width: 40, height: 40, background: '#333', borderRadius: '50%' }}></div>}
-                                        </td>
-                                        <td style={cellStyle}>{user.matric_no || 'N/A'}</td>
-                                        <td style={cellStyle}>{user.name}</td>
-                                        <td style={cellStyle}>{user.department} {user.level ? `(${user.level}L)` : ''}</td>
-                                        <td style={cellStyle}>
-                                            <button onClick={() => deleteUser(user.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>Delete</button>
-                                        </td>
+                        <div className="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Photo</th>
+                                        <th>Matric No</th>
+                                        <th>Name</th>
+                                        <th>Course/Level</th>
+                                        <th>Registered</th>
+                                        <th>Action</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {users.map(user => (
+                                        <tr key={user.id}>
+                                            <td>
+                                                {user.photo ? <img src={user.photo} style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--glass-border)' }} /> : <div style={{ width: 44, height: 44, background: '#111', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>?</div>}
+                                            </td>
+                                            <td style={{ fontWeight: 600, color: '#a5b4fc' }}>{user.matric_no}</td>
+                                            <td>{user.name}</td>
+                                            <td>
+                                                <div>{user.course}</div>
+                                                <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>{user.department} - {user.level}</div>
+                                            </td>
+                                            <td style={{ fontSize: '0.9rem' }}>{new Date(user.created_at).toLocaleDateString()}</td>
+                                            <td>
+                                                <button onClick={() => deleteUser(user.id)} className="btn btn-danger" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>Delete</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {users.length === 0 && <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', opacity: 0.5 }}>No users found</td></tr>}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
 
                 {activeTab === 'sessions' && (
                     <div style={{ padding: '2rem' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-                            <div>
-                                <h3 style={{ marginBottom: '1rem' }}>Create New Session</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
+                            {/* Create Session Card */}
+                            <div className="glass-panel" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                                <h3 style={{ marginTop: 0 }}>Start New Session</h3>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     <input
-                                        placeholder="Session Name (e.g. MTH 101 Lecture)"
+                                        placeholder="Session Name (e.g. CSC401 Lecture 1)"
                                         value={newSessionName}
                                         onChange={e => setNewSessionName(e.target.value)}
-                                        style={{ padding: '1rem', borderRadius: '8px', border: '1px solid #444', background: '#111', color: 'white' }}
                                     />
                                     <div style={{ display: 'flex', gap: '1rem' }}>
-                                        <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => createSession('in')}>Start SIGN IN</button>
-                                        <button className="btn btn-secondary" style={{ flex: 1, border: '1px solid #f87171', color: '#f87171' }} onClick={() => createSession('out')}>Start SIGN OUT</button>
+                                        <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => createSession('in')}>Start Check-In</button>
+                                        <button className="btn btn-secondary" style={{ flex: 1, borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={() => createSession('out')}>Start Check-Out</button>
                                     </div>
-                                    <p style={{ opacity: 0.5, fontSize: '0.8rem' }}>Starting a new session will automatically end any currently active session.</p>
+                                    <p className="text-muted" style={{ fontSize: '0.85rem', margin: 0 }}>
+                                        Starting a new session automatically ends any other active session.
+                                    </p>
                                 </div>
                             </div>
 
-                            <div>
-                                <h3 style={{ marginBottom: '1rem' }}>Active Session</h3>
+                            {/* Active Session Card */}
+                            <div className="glass-panel" style={{ background: activeSession ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                <h3 style={{ marginTop: 0 }}>Current Status</h3>
                                 {activeSession ? (
-                                    <div style={{ padding: '1.5rem', background: 'linear-gradient(45deg, #0f2e1a, #000)', borderRadius: '12px', border: '1px solid #22c55e' }}>
-                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>{activeSession.name}</div>
-                                        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-                                            <span style={{ background: '#22c55e', color: 'black', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>ACTIVE</span>
-                                            <span style={{ color: '#aaa' }}>Mode: {activeSession.type.toUpperCase()}</span>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: '2rem', fontWeight: 800, color: '#4ade80', marginBottom: '0.5rem' }}>{activeSession.name}</div>
+                                        <div className="badge badge-success" style={{ display: 'inline-block', fontSize: '1rem', padding: '0.5rem 1rem', marginBottom: '1rem' }}>
+                                            MODE: {activeSession.type.toUpperCase()}
                                         </div>
-                                        <button className="btn btn-secondary" onClick={() => endSession(activeSession.id)} style={{ width: '100%', borderColor: '#ef4444', color: '#ef4444' }}>End Session</button>
+
+                                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                            <button
+                                                className="btn btn-secondary"
+                                                onClick={() => toggleSessionType(activeSession.id)}
+                                                style={{ flex: 1, fontSize: '0.9rem' }}
+                                            >
+                                                Switch to {activeSession.type === 'in' ? 'Sign Out' : 'Sign In'}
+                                            </button>
+                                            <button className="btn btn-danger" onClick={() => endSession(activeSession.id)} style={{ flex: 1 }}>End Session</button>
+                                        </div>
                                     </div>
-                                ) : <div style={{ padding: '1.5rem', background: '#222', borderRadius: '12px', textAlign: 'center', opacity: 0.5 }}>No active session</div>}
+                                ) : (
+                                    <div style={{ textAlign: 'center', opacity: 0.5, padding: '2rem' }}>
+                                        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💤</div>
+                                        <div>No Active Session</div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
-                        <div style={{ marginTop: '3rem' }}>
-                            <h3>Session History</h3>
-                            <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', marginTop: '1rem' }}>
-                                <thead style={{ color: '#666' }}>
+                        <h3 style={{ marginBottom: '1rem' }}>History</h3>
+                        <div className="table-container">
+                            <table>
+                                <thead>
                                     <tr>
-                                        <th style={{ padding: '0.5rem' }}>Name</th>
-                                        <th style={{ padding: '0.5rem' }}>Mode</th>
-                                        <th style={{ padding: '0.5rem' }}>Started</th>
-                                        <th style={{ padding: '0.5rem' }}>Status</th>
-                                        <th style={{ padding: '0.5rem' }}>Action</th>
+                                        <th>Session Name</th>
+                                        <th>Started At</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {sessionHistory.map(hist => (
-                                        <tr key={hist.id} style={{ borderBottom: '1px solid #333' }}>
-                                            <td style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>{hist.name}</td>
-                                            <td style={{ padding: '0.5rem', textTransform: 'uppercase', fontSize: '0.8rem' }}>{hist.type}</td>
-                                            <td style={{ padding: '0.5rem', opacity: 0.7 }}>{new Date(hist.start_time).toLocaleString()}</td>
-                                            <td style={{ padding: '0.5rem' }}>
-                                                {hist.is_active ? <span style={{ color: '#4ade80' }}>Active</span> : <span style={{ opacity: 0.3 }}>Ended</span>}
+                                        <tr key={hist.id} onClick={() => getSessionStats(hist.id)} style={{ cursor: 'pointer' }}>
+                                            <td style={{ fontWeight: 500 }}>{hist.name}</td>
+                                            <td className="text-secondary">{new Date(hist.start_time).toLocaleString()}</td>
+                                            <td>
+                                                {hist.is_active ? <span className="badge badge-success">Active</span> : <span className="badge" style={{ opacity: 0.5 }}>Ended</span>}
                                             </td>
-                                            <td style={{ padding: '0.5rem' }}>
-                                                <button onClick={() => deleteSession(hist.id)} style={{ color: '#666', background: 'none', border: 'none', cursor: 'pointer' }}>Trash</button>
+                                            <td>
+                                                <button onClick={(e) => { e.stopPropagation(); deleteSession(hist.id); }} className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}>Trash</button>
                                             </td>
                                         </tr>
                                     ))}
@@ -296,6 +396,30 @@ function Admin() {
                     </div>
                 )}
             </div>
+
+            {/* Modal for stats */}
+            {selectedSessionStats && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={() => setSelectedSessionStats(null)}>
+                    <div className="glass-panel" style={{ minWidth: '300px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                        <h3>Session Statistics</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
+                            <div className="glass-panel" style={{ padding: '1rem' }}>
+                                <div style={{ fontSize: '2rem', fontWeight: 800 }}>{selectedSessionStats.total_students}</div>
+                                <div className="text-muted">Unique Students</div>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div className="badge badge-success" style={{ display: 'block' }}>
+                                    IN: {selectedSessionStats.total_in}
+                                </div>
+                                <div className="badge badge-danger" style={{ display: 'block' }}>
+                                    OUT: {selectedSessionStats.total_out}
+                                </div>
+                            </div>
+                        </div>
+                        <button className="btn btn-secondary" style={{ marginTop: '2rem', width: '100%' }} onClick={() => setSelectedSessionStats(null)}>Close</button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

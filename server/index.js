@@ -172,26 +172,64 @@ app.delete('/api/attendance/:id', (req, res) => {
 app.get('/api/export', (req, res) => {
     try {
         const logs = db.getAttendanceLogs();
-        const data = logs.map(l => ({
-            'ID': l.id,
-            'Matric No': l.matric_no || 'N/A',
-            'Name': l.name,
-            'Department': l.department || 'N/A',
-            'Level': l.level || 'N/A',
-            'Course': l.course || 'N/A',
-            'Time': new Date(l.timestamp).toLocaleString('en-GB', { timeZone: 'Africa/Lagos' }), // WAT GMT+1
-            'Type': l.type.toUpperCase(),
-            'Session': l.session_name || 'N/A'
-        }));
+
+        // Group by Session + User to merge IN/OUT
+        // Key: `${session_id}_${user_id}`
+        const grouped = {};
+
+        logs.forEach(log => {
+            const key = `${log.session_name}_${log.matric_no}`;
+            if (!grouped[key]) {
+                grouped[key] = {
+                    'Matric No': log.matric_no || 'N/A',
+                    'Name': log.name,
+                    'Department': log.department || 'N/A',
+                    'Level': log.level || 'N/A',
+                    'Course': log.course || 'N/A',
+                    'Session': log.session_name || 'N/A',
+                    'IN': '-',
+                    'OUT': '-'
+                };
+            }
+            // Format time
+            const timeStr = new Date(log.timestamp).toLocaleString('en-GB', {
+                timeZone: 'Africa/Lagos',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+
+            if (log.type === 'in') grouped[key]['IN'] = timeStr;
+            if (log.type === 'out') grouped[key]['OUT'] = timeStr;
+        });
+
+        const data = Object.values(grouped);
 
         const wb = xlsx.utils.book_new();
         const ws = xlsx.utils.json_to_sheet(data);
         xlsx.utils.book_append_sheet(wb, ws, 'Attendance');
 
         const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
-        res.setHeader('Content-Disposition', 'attachment; filename="attendance.xlsx"');
+        res.setHeader('Content-Disposition', 'attachment; filename="attendance_grouped.xlsx"');
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.send(buffer);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// V4: Session Type Toggle & Stats
+app.put('/api/sessions/:id/type', (req, res) => {
+    try {
+        const newType = db.toggleSessionType(req.params.id);
+        res.json({ success: true, newType });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/sessions/:id/stats', (req, res) => {
+    try {
+        const stats = db.getSessionStats(req.params.id);
+        res.json(stats);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

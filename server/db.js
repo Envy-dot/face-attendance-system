@@ -3,7 +3,7 @@ const path = require('path');
 
 const db = new Database('attendance.db', { verbose: console.log });
 
-// Initialize Schema
+// Initializing Schema song playing: Heartless the weeknd
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,6 +67,8 @@ const getAllUsers = (search, sort) => {
 };
 
 const deleteUser = (id) => {
+  // Delete attendance first to satisfy foreign key constraints (or logical cleanup)
+  db.prepare('DELETE FROM attendance WHERE user_id = ?').run(id);
   const stmt = db.prepare('DELETE FROM users WHERE id = ?');
   return stmt.run(id);
 };
@@ -102,6 +104,28 @@ const toggleSession = (id, isActive) => {
   }
   const stmt = db.prepare('UPDATE sessions SET is_active = ? WHERE id = ?');
   stmt.run(isActive ? 1 : 0, id);
+};
+
+const toggleSessionType = (id) => {
+  const session = db.prepare('SELECT type FROM sessions WHERE id = ?').get(id);
+  if (session) {
+    const newType = session.type === 'in' ? 'out' : 'in';
+    db.prepare('UPDATE sessions SET type = ? WHERE id = ?').run(newType, id);
+    return newType;
+  }
+  return null;
+};
+
+const getSessionStats = (sessionId) => {
+  const stats = db.prepare(`
+    SELECT 
+      COUNT(DISTINCT user_id) as total_students,
+      SUM(CASE WHEN type = 'in' THEN 1 ELSE 0 END) as total_in,
+      SUM(CASE WHEN type = 'out' THEN 1 ELSE 0 END) as total_out
+    FROM attendance 
+    WHERE session_id = ?
+  `).get(sessionId);
+  return stats;
 };
 
 // Attendance
@@ -161,6 +185,8 @@ module.exports = {
   checkDuplicate,
   getAttendanceLogs,
   deleteAttendance,
-  deleteAttendanceByDate
+  deleteAttendanceByDate,
+  toggleSessionType,
+  getSessionStats
 };
 

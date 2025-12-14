@@ -92,7 +92,6 @@ function Register() {
         if (!formData.name || !formData.matric_no) return setErrorMsg("Name and Matric No are required.");
         if (!faceDetected) return setErrorMsg("No face detected.");
 
-        // Capture single descriptor
         const detection = await faceapi.detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
             .withFaceLandmarks()
             .withFaceDescriptor();
@@ -113,6 +112,9 @@ function Register() {
                     setSuccessMsg(`User ${formData.name} registered successfully!`);
                     setFormData({ name: '', matric_no: '', level: '', department: '', course: '' });
                     setCapturedPhoto(null);
+
+                    // Clear success msg after 3s
+                    setTimeout(() => setSuccessMsg(''), 5000);
                 } else {
                     setErrorMsg(data.error || 'Registration failed.');
                 }
@@ -123,39 +125,77 @@ function Register() {
     };
 
     return (
-        <div className="page-container" style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center', gap: '2rem' }}>
-            <div className="card" style={{ maxWidth: '400px', width: '100%' }}>
-                <h2>Register User</h2>
-                {errorMsg && <div style={{ color: 'var(--error)', marginBottom: '1rem' }}>{errorMsg}</div>}
-                {successMsg && <div style={{ color: 'var(--success)', marginBottom: '1rem' }}>{successMsg}</div>}
+        <div className="page-container">
+            <h2 style={{ fontSize: '2rem', fontWeight: 800, margin: '0 0 1rem 0', background: 'linear-gradient(90deg, #fff, #a5b4fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                New Registration
+            </h2>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <input name="name" placeholder="Full Name *" value={formData.name} onChange={handleChange} />
-                    <input name="matric_no" placeholder="Matric No *" value={formData.matric_no} onChange={handleChange} />
-                    <input name="level" placeholder="Level (e.g., 400)" value={formData.level} onChange={handleChange} />
-                    <input name="department" placeholder="Department" value={formData.department} onChange={handleChange} />
-                    <input name="course" placeholder="Course of Study" value={formData.course} onChange={handleChange} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', width: '100%' }}>
+
+                {/* Left: Form */}
+                <div className="glass-panel">
+                    <h3 style={{ marginTop: 0 }}>Student Details</h3>
+                    {errorMsg && <div className="badge badge-danger" style={{ display: 'block', marginBottom: '1rem' }}>{errorMsg}</div>}
+                    {successMsg && <div className="badge badge-success" style={{ display: 'block', marginBottom: '1rem' }}>{successMsg}</div>}
+
+                    <div style={{ display: 'grid', gap: '1rem' }}>
+                        <div>
+                            <label className="text-secondary text-sm">Full Name *</label>
+                            <input name="name" placeholder="Unknown Student" value={formData.name} onChange={handleChange} style={{ marginTop: '0.4rem' }} />
+                        </div>
+                        <div>
+                            <label className="text-secondary text-sm">Matric No *</label>
+                            <input name="matric_no" placeholder="e.g. 21/0987" value={formData.matric_no} onChange={handleChange} style={{ marginTop: '0.4rem' }} />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                                <label className="text-secondary text-sm">Level</label>
+                                <input name="level" placeholder="100" value={formData.level} onChange={handleChange} style={{ marginTop: '0.4rem' }} />
+                            </div>
+                            <div>
+                                <label className="text-secondary text-sm">Department</label>
+                                <input name="department" placeholder="CSC" value={formData.department} onChange={handleChange} style={{ marginTop: '0.4rem' }} />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-secondary text-sm">Course</label>
+                            <input name="course" placeholder="Computer Science" value={formData.course} onChange={handleChange} style={{ marginTop: '0.4rem' }} />
+                        </div>
+                    </div>
+
+                    <button
+                        className="btn btn-primary"
+                        style={{ marginTop: '2rem', width: '100%', fontSize: '1rem', padding: '1rem' }}
+                        onClick={handleRegister}
+                        disabled={!faceDetected || !formData.name || !formData.matric_no}
+                    >
+                        {faceDetected ? (formData.name ? 'Capture & Register' : 'Enter Details') : 'Waiting for Face...'}
+                    </button>
+                    {!faceDetected && <p className="text-muted text-sm" style={{ textAlign: 'center', marginTop: '1rem' }}>Position face in camera to enable button</p>}
                 </div>
 
-                <button
-                    className="btn btn-primary"
-                    style={{ marginTop: '1.5rem', width: '100%' }}
-                    onClick={handleRegister}
-                    disabled={!faceDetected || !formData.name || !formData.matric_no}
-                >
-                    Capture & Register
-                </button>
-            </div>
-
-            <div className="video-container" style={{ width: '640px', height: '480px', background: '#000', borderRadius: '12px', overflow: 'hidden' }}>
-                {initializing && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: 'white' }}>Loading AI...</div>}
-                <video ref={videoRef} autoPlay muted onPlay={handleVideoPlay} width="640" height="480" />
-                <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0 }} />
-                {capturedPhoto && (
-                    <div style={{ position: 'absolute', bottom: '10px', right: '10px', border: '2px solid white', borderRadius: '4px' }}>
-                        <img src={capturedPhoto} width="100" />
+                {/* Right: Video */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div className="video-wrapper">
+                        {initializing && (
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', zIndex: 20 }}>
+                                <div style={{ color: '#fff', fontSize: '1.2rem', animation: 'pulse 2s infinite' }}>Loading Camera...</div>
+                            </div>
+                        )}
+                        <video ref={videoRef} autoPlay muted onPlay={handleVideoPlay} width="640" height="480" style={{ maxWidth: '100%', height: 'auto', display: 'block' }} />
+                        <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0 }} />
                     </div>
-                )}
+
+                    {capturedPhoto && (
+                        <div className="glass-panel" style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <img src={capturedPhoto} style={{ width: 60, height: 60, borderRadius: '8px', border: '1px solid #fff', objectFit: 'cover' }} />
+                            <div>
+                                <div style={{ fontWeight: 600 }}>Face Captured</div>
+                                <div className="text-sm text-secondary">Ready for submission</div>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
