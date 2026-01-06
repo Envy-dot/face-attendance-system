@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as faceapi from 'face-api.js';
+import { api } from '../api';
 
 function Attendance() {
     const [initializing, setInitializing] = useState(true);
@@ -18,15 +19,15 @@ function Attendance() {
         const setup = async () => {
             const MODEL_URL = '/models';
             try {
-                await Promise.all([
+                const [activeSession, users] = await Promise.all([
+                    api.sessions.getActive(),
+                    api.users.getAll(),
                     faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
                     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-                    fetchActiveSession()
+                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
                 ]);
 
-                const usersRes = await fetch('/api/users');
-                const users = await usersRes.json();
+                setSession(activeSession);
 
                 if (users.length > 0) {
                     const labeledDescriptors = users.map(user => {
@@ -55,19 +56,12 @@ function Attendance() {
     }, []);
 
     useEffect(() => {
-        const interval = setInterval(fetchActiveSession, 10000);
+        const interval = setInterval(async () => {
+            const data = await api.sessions.getActive();
+            setSession(data);
+        }, 10000);
         return () => clearInterval(interval);
     }, []);
-
-    const fetchActiveSession = async () => {
-        try {
-            const res = await fetch('/api/sessions/active');
-            const data = await res.json();
-            setSession(data);
-        } catch (err) {
-            console.error("Failed to fetch session", err);
-        }
-    };
 
     const startVideo = () => {
         navigator.mediaDevices.getUserMedia({ video: {} })
@@ -98,19 +92,12 @@ function Attendance() {
             }
 
             try {
-                const currentMode = session.type || 'in';
-                const res = await fetch('/api/attendance', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, type: currentMode, image: imageBase64 })
-                });
-
-                if (res.ok) {
-                    setLogs(prev => [{ name, time: new Date().toLocaleTimeString(), type: currentMode }, ...prev].slice(0, 10));
-                } else if (res.status === 409) {
-                    setLogs(prev => [{ name, time: 'Already logged', type: 'error' }, ...prev].slice(0, 10));
-                } else if (res.status === 403) {
-                    setLogs(prev => [{ name, time: 'Session inactive', type: 'error' }, ...prev].slice(0, 10));
+                const res = await api.attendance.log(userId, imageBase64);
+                // Handle success/error states based on API response
+                if (res.success) {
+                    setLogs(prev => [{ name, time: new Date().toLocaleTimeString(), type: session.type }, ...prev].slice(0, 10));
+                } else {
+                    setLogs(prev => [{ name, time: res.error || 'Error', type: 'error' }, ...prev].slice(0, 10));
                 }
             } catch (err) {
                 console.error("Log error", err);
@@ -158,14 +145,13 @@ function Attendance() {
 
     return (
         <div className="page-container">
-            {/* Header */}
             <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
                 <h2 style={{ fontSize: '2rem', fontWeight: 800, margin: '0 0 0.5rem 0', background: 'linear-gradient(90deg, #60a5fa, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                     Attendance Scanner
                 </h2>
                 {session ? (
                     <div className="badge badge-success" style={{ fontSize: '1rem', padding: '0.5rem 1.5rem', boxShadow: '0 0 20px rgba(16, 185, 129, 0.3)', border: '1px solid #22c55e' }}>
-                        Active: {session.name} <span style={{ opacity: 0.8 }}>({session.type === 'in' ? 'Check In' : 'Check Out'})</span>
+                        Active: {session.name} <span style={{ opacity: 0.8 }}>({session.type.toUpperCase()})</span>
                     </div>
                 ) : (
                     <div className="badge badge-danger" style={{ fontSize: '1rem', padding: '0.5rem 1.5rem' }}>
@@ -177,7 +163,6 @@ function Attendance() {
             {errorMsg && <div className="badge badge-danger" style={{ marginBottom: '1rem' }}>{errorMsg}</div>}
 
             <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center', width: '100%', maxWidth: '1400px' }}>
-                {/* Main Video Area */}
                 <div style={{ flex: '1', minWidth: '350px', maxWidth: '800px' }}>
                     <div className="video-wrapper">
                         {initializing && (
@@ -195,7 +180,6 @@ function Attendance() {
                     )}
                 </div>
 
-                {/* Right Panel: Logs */}
                 <div className="glass-panel" style={{ width: '320px', display: 'flex', flexDirection: 'column', height: '500px' }}>
                     <h3 style={{ margin: '0 0 1rem 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>Recent Activity</h3>
                     <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -238,3 +222,4 @@ function Attendance() {
 }
 
 export default Attendance;
+
