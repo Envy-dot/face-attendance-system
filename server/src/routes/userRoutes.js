@@ -9,17 +9,17 @@ router.post('/register', validate(registerSchema), (req, res) => {
     const { name, matric_no, level, department, course, photo, descriptor, section } = req.body;
 
     try {
-        const userId = userService.registerUser({
+        const result = userService.registerUser({
             name,
             matric_no,
             level,
             department,
             course,
             photo,
-            descriptor: JSON.stringify(descriptor),
+            descriptor, // Passed as raw array now
             section
         });
-        res.json({ success: true, userId });
+        res.json({ success: true, userId: result.userId, created: result.created });
     } catch (err) {
         if (err.message.includes('UNIQUE constraint failed')) {
             return res.status(409).json({ error: 'User already exists' });

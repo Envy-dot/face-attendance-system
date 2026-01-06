@@ -2,9 +2,35 @@ const db = require('../config/database');
 
 const registerUser = (user) => {
     const { name, matric_no, level, department, course, photo, descriptor, section } = user;
-    const stmt = db.prepare('INSERT INTO users (name, matric_no, level, department, course, photo, descriptor, section) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-    const info = stmt.run(name, matric_no, level, department, course, photo, descriptor, section);
-    return info.lastInsertRowid;
+
+    // Check if user already exists by matric_no
+    const existingUser = db.prepare('SELECT id, descriptor FROM users WHERE matric_no = ?').get(matric_no);
+
+    if (existingUser) {
+        let descriptors = [];
+        try {
+            const parsed = JSON.parse(existingUser.descriptor);
+            // Support both old format (array) and new format (array of arrays)
+            descriptors = Array.isArray(parsed[0]) ? parsed : [parsed];
+        } catch (e) {
+            descriptors = [];
+        }
+
+        // Append new descriptor if it's not already a duplicate (basic check)
+        descriptors.push(descriptor);
+
+        // Keep only last 5 descriptors to prevent bloat but maintain accuracy
+        if (descriptors.length > 5) descriptors.shift();
+
+        const stmt = db.prepare('UPDATE users SET name = ?, level = ?, department = ?, course = ?, photo = ?, descriptor = ?, section = ? WHERE id = ?');
+        stmt.run(name, level, department, course, photo, JSON.stringify(descriptors), section, existingUser.id);
+        return { userId: existingUser.id, created: false };
+    } else {
+        // New user: store as array of arrays [[descriptor]]
+        const stmt = db.prepare('INSERT INTO users (name, matric_no, level, department, course, photo, descriptor, section) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        const info = stmt.run(name, matric_no, level, department, course, photo, JSON.stringify([descriptor]), section);
+        return { userId: info.lastInsertRowid, created: true };
+    }
 };
 
 const getAllUsers = (search, sort) => {
