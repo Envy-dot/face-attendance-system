@@ -28,11 +28,11 @@ export const api = {
             const res = await fetch(`${BASE_URL}/sessions/history`);
             return res.json();
         },
-        create: async (name, type) => {
+        create: async (name, type, duration = 0) => {
             const res = await fetch(`${BASE_URL}/sessions`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'create', name, type })
+                body: JSON.stringify({ action: 'create', name, type, duration })
             });
             return res.json();
         },
@@ -82,6 +82,7 @@ export const api = {
             });
             return res.json();
         },
-        exportUrl: `${BASE_URL}/attendance/export`
+        exportUrl: `${BASE_URL}/attendance/export`,
+        exportMatrixUrl: (sessionName) => `${BASE_URL}/attendance/export-matrix?sessionName=${encodeURIComponent(sessionName)}`
     }
 };

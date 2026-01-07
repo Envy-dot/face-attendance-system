@@ -30,6 +30,7 @@ function Admin() {
 
     // Form inputs
     const [newSessionName, setNewSessionName] = useState('');
+    const [newSessionDuration, setNewSessionDuration] = useState('60');
     const [searchQuery, setSearchQuery] = useState('');
     const [bulkDate, setBulkDate] = useState('');
 
@@ -85,7 +86,7 @@ function Admin() {
 
     const handleCreateSession = async (type) => {
         if (!newSessionName) return alert("Please specify a session name for tracking.");
-        await api.sessions.create(newSessionName, type);
+        await api.sessions.create(newSessionName, type, parseInt(newSessionDuration) || 0);
         setNewSessionName('');
         fetchActiveSession();
         if (activeTab === 'sessions') fetchSessionHistory();
@@ -133,8 +134,12 @@ function Admin() {
         setSelectedSessionStats(data);
     };
 
+    const handleExportMatrix = (sessionName) => {
+        window.open(api.attendance.exportMatrixUrl(sessionName), '_blank');
+    };
+
     return (
-        <div className="page-container animate-fade">
+        <div className="page-container animate-fade" style={{ padding: '4rem 1rem' }}>
             <div className="card" style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '2rem', padding: '1.5rem 2.5rem', marginBottom: '2.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                     <div style={{ background: 'var(--primary)', color: 'white', padding: '0.75rem', borderRadius: '12px' }}>
@@ -230,11 +235,14 @@ function Admin() {
                         sessionHistory={sessionHistory}
                         newSessionName={newSessionName}
                         setNewSessionName={setNewSessionName}
+                        newSessionDuration={newSessionDuration}
+                        setNewSessionDuration={setNewSessionDuration}
                         onCreateSession={handleCreateSession}
                         onToggleSessionType={handleToggleSessionType}
                         onEndSession={handleEndSession}
                         onDeleteSession={handleDeleteSession}
                         onGetStats={handleGetStats}
+                        onExportMatrix={handleExportMatrix}
                     />
                 )}
             </div>

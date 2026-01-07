@@ -68,42 +68,55 @@ router.delete('/:id', (req, res) => {
     }
 });
 
-// Export Excel
-router.get('/export', (req, res) => {
+// Export Matrix Excel (Student vs Date)
+router.get('/export-matrix', (req, res) => {
     try {
-        const logs = attendanceService.getAttendanceLogs();
+        const { sessionName } = req.query;
+        if (!sessionName) return res.status(400).json({ error: 'sessionName is required' });
 
-        const grouped = {};
-        logs.forEach(log => {
-            const key = `${log.session_name}_${log.matric_no}`;
-            if (!grouped[key]) {
-                grouped[key] = {
-                    'Matric No': log.matric_no || 'N/A',
-                    'Name': log.name,
-                    'Department': log.department || 'N/A',
-                    'Level': log.level || 'N/A',
-                    'Course': log.course || 'N/A',
-                    'Session': log.session_name || 'N/A',
-                    'IN': '-',
-                    'OUT': '-'
-                };
-            }
-            const timeStr = new Date(log.timestamp).toLocaleString('en-GB', {
-                timeZone: 'Africa/Lagos',
-                hour: '2-digit', minute: '2-digit', second: '2-digit'
-            });
+        const users = require('../services/userService').getAllUsers();
 
-            if (log.type === 'in') grouped[key]['IN'] = timeStr;
-            if (log.type === 'out') grouped[key]['OUT'] = timeStr;
+        // Get all sessions with this name
+        const db = require('../config/database');
+        const sessions = db.prepare('SELECT id, date(start_time) as date FROM sessions WHERE name = ? ORDER BY start_time ASC').all(sessionName);
+
+        if (sessions.length === 0) return res.status(404).json({ error: 'No sessions found with this name' });
+
+        // Build unique session dates
+        const dates = [...new Set(sessions.map(s => s.date))];
+        const sessionIdsByDate = {};
+        dates.forEach(d => {
+            sessionIdsByDate[d] = sessions.filter(s => s.date === d).map(s => s.id);
         });
 
-        const data = Object.values(grouped);
+        // Fetch all attendance for these sessions
+        const sessionIds = sessions.map(s => s.id);
+        const placeholders = sessionIds.map(() => '?').join(',');
+        const attendance = db.prepare(`SELECT user_id, session_id FROM attendance WHERE session_id IN (${placeholders})`).all(...sessionIds);
+
+        const matrixData = users.map(user => {
+            const row = {
+                'Matric No': user.matric_no || 'N/A',
+                'Name': user.name,
+                'Department': user.department || 'N/A',
+                'Course': user.course || 'N/A'
+            };
+
+            dates.forEach(date => {
+                const idsForDate = sessionIdsByDate[date];
+                const wasPresent = attendance.some(a => a.user_id === user.id && idsForDate.includes(a.session_id));
+                row[date] = wasPresent ? 1 : 0;
+            });
+
+            return row;
+        });
+
         const wb = xlsx.utils.book_new();
-        const ws = xlsx.utils.json_to_sheet(data);
-        xlsx.utils.book_append_sheet(wb, ws, 'Attendance');
+        const ws = xlsx.utils.json_to_sheet(matrixData);
+        xlsx.utils.book_append_sheet(wb, ws, 'Attendance Matrix');
 
         const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
-        res.setHeader('Content-Disposition', 'attachment; filename="attendance_grouped.xlsx"');
+        res.setHeader('Content-Disposition', `attachment; filename="attendance_matrix_${sessionName.replace(/\s+/g, '_')}.xlsx"`);
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.send(buffer);
     } catch (err) {

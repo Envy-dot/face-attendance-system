@@ -17,23 +17,26 @@ function SessionManager({
     sessionHistory,
     newSessionName,
     setNewSessionName,
+    newSessionDuration,
+    setNewSessionDuration,
     onCreateSession,
     onToggleSessionType,
     onEndSession,
     onDeleteSession,
-    onGetStats
+    onGetStats,
+    onExportMatrix
 }) {
     return (
         <div className="animate-fade" style={{ padding: '2.5rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2.5rem', marginBottom: '4rem' }}>
                 {/* Create Session Card */}
-                <div className="card" style={{ borderTop: '5px solid var(--primary)', padding: '2.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
+                <div className="card" style={{ borderTop: '5px solid var(--primary)', padding: '2.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <PlayCircle className="text-primary" size={24} />
                         <h3 style={{ margin: 0, color: 'var(--text-main)', fontWeight: 800 }}>Initiate Surveillance</h3>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
                         <div>
                             <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '0.4rem', display: 'block' }}>Operational Context</label>
                             <input
@@ -43,20 +46,27 @@ function SessionManager({
                                 style={{ background: 'var(--bg-main)' }}
                             />
                         </div>
-                        <div style={{ display: 'flex', gap: '1rem' }}>
-                            <button className="btn btn-primary" style={{ flex: 1, padding: '0.8rem' }} onClick={() => onCreateSession('in')}>
-                                <LogIn size={18} /> OPEN ENTRY
-                            </button>
-                            <button className="btn btn-secondary" style={{ flex: 1, padding: '0.8rem' }} onClick={() => onCreateSession('out')}>
-                                <LogOut size={18} /> OPEN EXIT
-                            </button>
+                        <div>
+                            <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '0.4rem', display: 'block' }}>Duration (Min)</label>
+                            <input
+                                type="number"
+                                placeholder="60"
+                                value={newSessionDuration}
+                                onChange={e => setNewSessionDuration(e.target.value)}
+                                style={{ background: 'var(--bg-main)' }}
+                            />
                         </div>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', background: 'var(--bg-main)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
-                            <Info size={16} className="text-primary" style={{ flexShrink: 0, marginTop: '2px' }} />
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-                                Start will automatically finalize any active biometric surveillance sessions.
-                            </p>
-                        </div>
+                    </div>
+
+                    <button className="btn btn-primary" style={{ padding: '1rem', fontSize: '1rem' }} onClick={() => onCreateSession('in')}>
+                        <LogIn size={18} /> INITIALIZE SESSION
+                    </button>
+
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', background: 'var(--bg-main)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+                        <Info size={16} className="text-primary" style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                            New sessions automatically finalize any active biometric surveillance.
+                        </p>
                     </div>
                 </div>
 
@@ -79,19 +89,12 @@ function SessionManager({
                             <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--text-main)', marginBottom: '0.5rem', letterSpacing: '-0.5px' }}>{activeSession.name}</div>
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--success)', color: 'white', padding: '0.3rem 0.75rem', borderRadius: '100px', fontSize: '0.8rem', fontWeight: 800, marginBottom: '2rem', textTransform: 'uppercase' }}>
                                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'white', animation: 'pulse 1s infinite' }}></div>
-                                {activeSession.type} Mode ACTIVE
+                                {activeSession.type === 'in' ? 'Tracking' : 'Monitoring'} ACTIVE
                             </div>
 
                             <div style={{ display: 'flex', gap: '1rem' }}>
-                                <button
-                                    className="btn btn-secondary"
-                                    onClick={() => onToggleSessionType(activeSession.id)}
-                                    style={{ flex: 1, padding: '0.8rem', fontSize: '0.9rem', fontWeight: 700, background: 'white' }}
-                                >
-                                    <RefreshCcw size={18} /> SWAP
-                                </button>
-                                <button className="btn btn-danger" onClick={() => onEndSession(activeSession.id)} style={{ flex: 1, padding: '0.8rem', fontWeight: 700 }}>
-                                    <StopCircle size={18} /> TERMINATE
+                                <button className="btn btn-danger" onClick={() => onEndSession(activeSession.id)} style={{ flex: 1, padding: '1rem', fontWeight: 700 }}>
+                                    <StopCircle size={18} /> TERMINATE MONITORING
                                 </button>
                             </div>
                         </div>
@@ -122,7 +125,7 @@ function SessionManager({
                         <tr>
                             <th>IDENTIFIER</th>
                             <th>TIMESTAMP (START)</th>
-                            <th>LIFECYCLE</th>
+                            <th>STATUS</th>
                             <th style={{ textAlign: 'right' }}>OPERATIONS</th>
                         </tr>
                     </thead>
@@ -146,7 +149,15 @@ function SessionManager({
                                         </div>
                                     }
                                 </td>
-                                <td style={{ textAlign: 'right' }}>
+                                <td style={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onExportMatrix(hist.name); }}
+                                        className="btn btn-secondary"
+                                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
+                                        title="Export Matrix"
+                                    >
+                                        <LogIn size={14} /> MATRIX
+                                    </button>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); onDeleteSession(hist.id); }}
                                         className="btn btn-secondary"
@@ -168,7 +179,7 @@ function SessionManager({
                     </tbody>
                 </table>
             </div>
-        </div>
+        </div >
     );
 }
 

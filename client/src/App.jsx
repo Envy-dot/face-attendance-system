@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
-import { ShieldCheck, UserPlus, Camera, Lock, Home as HomeIcon } from 'lucide-react';
+import { ScanFace, UserPlus, Camera, Lock, Home as HomeIcon } from 'lucide-react';
 import Register from './pages/Register';
 import Attendance from './pages/Attendance';
 import Admin from './pages/Admin';
@@ -68,7 +68,7 @@ function App() {
             color: 'var(--text-main)'
           }}>
             <div style={{ background: 'var(--primary)', color: 'white', padding: '8px', borderRadius: '10px' }}>
-              <ShieldCheck size={24} />
+              <ScanFace size={24} />
             </div>
             <span style={{ fontWeight: 900, fontSize: '1.5rem', letterSpacing: '-1.5px', color: 'var(--primary)' }}>FaceAttend</span>
           </Link>
@@ -81,7 +81,7 @@ function App() {
           </div>
         </nav>
 
-        <main className="main-content" style={{ padding: '3rem 5%' }}>
+        <main className="main-content">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/register" element={<Register />} />

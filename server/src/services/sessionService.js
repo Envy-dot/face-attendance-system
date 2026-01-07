@@ -1,11 +1,11 @@
 const db = require('../config/database');
 
-const createSession = (name, type = 'in') => {
+const createSession = (name, type = 'in', duration = 0) => {
     // Deactivate all other sessions first
     db.prepare('UPDATE sessions SET is_active = 0').run();
-    const stmt = db.prepare('INSERT INTO sessions (name, type) VALUES (?, ?)');
-    const info = stmt.run(name, type);
-    return { id: info.lastInsertRowid, name, type, is_active: 1 };
+    const stmt = db.prepare('INSERT INTO sessions (name, type, duration) VALUES (?, ?, ?)');
+    const info = stmt.run(name, type, duration);
+    return { id: info.lastInsertRowid, name, type, duration, is_active: 1 };
 };
 
 const getActiveSession = () => {

@@ -26,22 +26,12 @@ function SessionStatsModal({ stats, onClose }) {
                         <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginTop: '0.5rem', letterSpacing: '1px' }}>Captured Students</div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <div className="card" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '1.5rem', textAlign: 'center' }}>
-                            <div style={{ display: 'flex', justifyContent: 'center', color: '#166534', marginBottom: '0.5rem' }}>
-                                <LogIn size={20} />
-                            </div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#166534' }}>{stats.total_in}</div>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#16a34a', textTransform: 'uppercase' }}>In</div>
+                    <div className="card" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '1.5rem', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', color: '#166534', marginBottom: '0.5rem' }}>
+                            <LogIn size={24} />
                         </div>
-
-                        <div className="card" style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '1.5rem', textAlign: 'center' }}>
-                            <div style={{ display: 'flex', justifyContent: 'center', color: '#991b1b', marginBottom: '0.5rem' }}>
-                                <LogOut size={20} />
-                            </div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#991b1b' }}>{stats.total_out}</div>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#dc2626', textTransform: 'uppercase' }}>Out</div>
-                        </div>
+                        <div style={{ fontSize: '2rem', fontWeight: 900, color: '#166534' }}>{stats.total_in}</div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#16a34a', textTransform: 'uppercase' }}>Verified Attendance</div>
                     </div>
                 </div>
 

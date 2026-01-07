@@ -125,9 +125,43 @@ body {
 }
 
 .main-content {
-  padding: 2rem;
-  max-width: 1200px;
+  padding: 4rem 5%;
+  max-width: 1400px;
   margin: 0 auto;
+}
+
+.page-container {
+  max-width: 1200px;
+  /* Constrain wide pages like Admin */
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.centered-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 150px);
+  text-align: center;
+}
+
+.section-gutter {
+  margin-top: 6rem;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.button-gutter {
+  display: flex;
+  /* Essential for gap to work */
+  gap: 4rem !important;
+  /* Increased from 3rem */
+  justify-content: center;
 }
 
 /* UI Elements */
@@ -151,6 +185,7 @@ body {
 
 .card:hover {
   box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
 }
 
 .btn {
@@ -306,8 +341,64 @@ tr.clickable:hover td {
   background: white;
   border-radius: 24px;
   padding: 2rem;
-  width: 90%;
-  max-width: 500px;
+  width: 95%;
+  max-width: 550px;
   box-shadow: var(--shadow-lg);
   position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Media Queries for Responsiveness */
+@media (max-width: 1024px) {
+  h1 {
+    font-size: 3rem !important;
+  }
+
+  .main-content {
+    padding: 1.5rem 3%;
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0.75rem 1rem;
+  }
+
+  .nav-links {
+    display: none;
+  }
+
+  /* Could add a mobile menu later if needed */
+  .nav-brand span {
+    font-size: 1.25rem;
+  }
+
+  .page-container {
+    padding: 1rem 0;
+  }
+
+  h1 {
+    font-size: 2.5rem !important;
+    letter-spacing: -1px !important;
+  }
+
+  h2 {
+    font-size: 1.75rem !important;
+  }
+
+  .grid-balanced {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .btn {
+    width: 100%;
+  }
+
+  .card {
+    padding: 1.5rem;
+  }
 }

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as faceapi from 'face-api.js';
-import { UserCheck, Camera, Info, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { UserCheck, Camera, Info, AlertCircle, CheckCircle } from 'lucide-react';
 import { api } from '../api';
 
 function Register() {
@@ -20,6 +20,20 @@ function Register() {
     const videoRef = useRef();
     const canvasRef = useRef();
     const streamRef = useRef();
+
+    const startVideo = () => {
+        navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+            .then(stream => {
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                    streamRef.current = stream;
+                }
+            })
+            .catch(err => {
+                console.error("Camera error:", err);
+                setErrorMsg("Hardware Error: Camera access was denied or not found.");
+            });
+    };
 
     useEffect(() => {
         const loadModels = async () => {
@@ -45,20 +59,6 @@ function Register() {
             }
         };
     }, []);
-
-    const startVideo = () => {
-        navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
-            .then(stream => {
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                    streamRef.current = stream;
-                }
-            })
-            .catch(err => {
-                console.error("Camera error:", err);
-                setErrorMsg("Hardware Error: Camera access was denied or not found.");
-            });
-    };
 
     const handleVideoPlay = () => {
         setInitializing(false);
@@ -151,7 +151,7 @@ function Register() {
                 } else {
                     setErrorMsg(data.error || 'System Error: Enrollment process failed.');
                 }
-            } catch (err) {
+            } catch {
                 setErrorMsg('Network Error: Unable to reach administration server.');
             }
         }
@@ -187,7 +187,7 @@ function Register() {
                     )}
                     {successMsg && (
                         <div className="badge badge-success animate-fade" style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '1rem', marginBottom: '1.5rem', borderRadius: '10px' }}>
-                            <CheckCircle2 size={18} /> {successMsg}
+                            <CheckCircle size={18} /> {successMsg}
                         </div>
                     )}
 

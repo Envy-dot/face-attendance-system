@@ -19,8 +19,8 @@ function AdminLogin() {
     };
 
     return (
-        <div className="flex-center animate-fade" style={{ minHeight: '80vh' }}>
-            <div className="card animate-up" style={{ width: '100%', maxWidth: '440px', textAlign: 'center', padding: '3rem' }}>
+        <div className="centered-layout animate-fade">
+            <div className="card animate-up" style={{ width: '100%', maxWidth: '440px', textAlign: 'center', padding: '3.5rem' }}>
                 <div style={{ display: 'inline-flex', background: 'var(--primary-light)', color: 'var(--primary)', padding: '1rem', borderRadius: '20px', marginBottom: '2rem' }}>
                     <ShieldAlert size={40} />
                 </div>

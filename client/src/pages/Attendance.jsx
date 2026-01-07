@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Camera, AlertCircle, Clock, Activity, CloudOff } from 'lucide-react';
 import * as faceapi from 'face-api.js';
-import { Camera, Activity, ShieldCheck, AlertCircle, CheckCircle2, CloudOff } from 'lucide-react';
 import { api } from '../api';
 
 function Attendance() {
@@ -8,6 +9,9 @@ function Attendance() {
     const [logs, setLogs] = useState([]);
     const [errorMsg, setErrorMsg] = useState('');
     const [session, setSession] = useState(null);
+    const [recentIdentified, setRecentIdentified] = useState(null);
+    const [timeLeft, setTimeLeft] = useState(null);
+    const [isExpired, setIsExpired] = useState(false);
 
     const videoRef = useRef();
     const canvasRef = useRef();
@@ -16,6 +20,17 @@ function Attendance() {
     const usersMapRef = useRef({});
     const usersRef = useRef([]); // Critical: store users for access in handleVideoPlay
     const lastLogRef = useRef({});
+
+    const startVideo = () => {
+        navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+            .then(stream => {
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                    streamRef.current = stream;
+                }
+            })
+            .catch(() => setErrorMsg("Camera access was denied by system policy."));
+    };
 
     useEffect(() => {
         const setup = async () => {
@@ -66,23 +81,37 @@ function Attendance() {
             try {
                 const data = await api.sessions.getActive();
                 setSession(data);
-            } catch (e) { }
+            } catch { }
         }, 10000);
         return () => clearInterval(interval);
     }, []);
 
-    const startVideo = () => {
-        navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
-            .then(stream => {
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                    streamRef.current = stream;
-                }
-            })
-            .catch(err => setErrorMsg("Camera access was denied by system policy."));
-    };
+    useEffect(() => {
+        if (session) {
+            if (session.duration > 0) {
+                const start = new Date(session.start_time).getTime();
+                const end = start + session.duration * 60000;
 
-    const logAttendance = async (name, detectionBox) => {
+                const timer = setInterval(() => {
+                    const now = new Date().getTime();
+                    const diff = end - now;
+                    if (diff <= 0) {
+                        setTimeLeft(0);
+                        setIsExpired(true);
+                        clearInterval(timer);
+                    } else {
+                        setTimeLeft(diff);
+                    }
+                }, 1000);
+                return () => clearInterval(timer);
+            } else {
+                setTimeLeft(null);
+                setIsExpired(false);
+            }
+        }
+    }, [session]);
+
+    const handleAttendance = async (name, detectionBox) => {
         if (!session) return;
 
         const now = Date.now();
@@ -109,14 +138,14 @@ function Attendance() {
             }
 
             try {
-                const res = await api.attendance.log(userId, imageBase64);
+                const res = await api.attendance.log(userId, imageBase64, 'in'); // Enforce 'in' type
                 if (res.success) {
-                    setLogs(prev => [{ name, time: new Date().toLocaleTimeString(), type: session.type }, ...prev].slice(0, 10));
+                    setLogs(prev => [{ name, time: new Date().toLocaleTimeString(), type: 'in' }, ...prev].slice(0, 10));
                 } else {
                     setLogs(prev => [{ name, time: res.error || 'Server Error', type: 'error' }, ...prev].slice(0, 10));
                 }
-            } catch (err) {
-                console.error("Log error", err);
+            } catch {
+                setErrorMsg('Network Error: Unable to reach administration server.');
             }
         }
     };
@@ -192,8 +221,9 @@ function Attendance() {
                     ctx.fillStyle = 'white';
                     ctx.fillText(text, x + 8, y - 13);
 
-                    if (isMatched) {
-                        logAttendance(result.label, box);
+                    // Match Found!
+                    if (isMatched && !isExpired) {
+                        handleAttendance(result.label, box);
                     }
                 });
             } else if (!session && videoRef.current && canvasRef.current) {
@@ -211,12 +241,37 @@ function Attendance() {
         <div className="page-container animate-fade">
             <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
                 <h2 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '0.75rem', color: 'var(--text-main)', letterSpacing: '-1.5px' }}>
-                    Identity Verification Hub
+                    Identity Verification
                 </h2>
                 {session ? (
-                    <div className="badge badge-success animate-fade" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '1rem', padding: '0.75rem 1.5rem', borderRadius: '100px', fontWeight: 700, border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                        <ShieldCheck size={18} />
-                        Live: <strong>{session.name}</strong> • Mode: <span style={{ textTransform: 'uppercase' }}>{session.type}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                        <div className="badge badge-success animate-fade" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '1rem', padding: '0.75rem 1.5rem', borderRadius: '100px', fontWeight: 700, border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                            <div style={{ width: '8px', height: '8px', background: 'var(--success)', borderRadius: '50%', animation: 'pulse 1s infinite' }} />
+                            Live Session: {session.name}
+                        </div>
+
+                        {timeLeft !== null && (
+                            <div style={{
+                                background: isExpired ? 'var(--danger-bg)' : 'var(--primary-light)',
+                                color: isExpired ? 'var(--danger)' : 'var(--primary)',
+                                padding: '0.5rem 1.5rem',
+                                borderRadius: '12px',
+                                fontWeight: 800,
+                                fontSize: '1.25rem',
+                                border: `1px solid ${isExpired ? '#fca5a5' : '#bfdbfe'}`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px'
+                            }}>
+                                <Clock size={20} />
+                                {isExpired ? "TIME EXPIRED" : (
+                                    <span>
+                                        Closing in: {Math.floor(timeLeft / 60000)}:
+                                        {Math.floor((timeLeft % 60000) / 1000).toString().padStart(2, '0')}
+                                    </span>
+                                )}
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <div className="badge badge-danger animate-fade" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '1rem', padding: '0.75rem 1.5rem', borderRadius: '100px', fontWeight: 700 }}>

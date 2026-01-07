@@ -3,10 +3,10 @@ const router = express.Router();
 const sessionService = require('../services/sessionService');
 
 router.post('/', (req, res) => {
-    const { name, type, action, id } = req.body;
+    const { name, type, action, id, duration } = req.body;
     try {
         if (action === 'create') {
-            const session = sessionService.createSession(name, type || 'in');
+            const session = sessionService.createSession(name, type || 'in', duration || 0);
             res.json(session);
         } else if (action === 'toggle') {
             sessionService.toggleSession(id, req.body.isActive);
