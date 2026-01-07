@@ -25,9 +25,9 @@ function Register() {
         const loadModels = async () => {
             const MODEL_URL = '/models';
             try {
-                //load TinyFaceDetector for speed, but Landmark and Recognition for precision
+                //load ssdMobilenetv1 for precision, and Landmark and Recognition for precision
                 await Promise.all([
-                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                    faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
                     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
                     faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
                 ]);
@@ -67,7 +67,7 @@ function Register() {
                 const displaySize = { width: videoRef.current.width, height: videoRef.current.height };
                 faceapi.matchDimensions(canvasRef.current, displaySize);
 
-                const detections = await faceapi.detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
+                const detections = await faceapi.detectAllFaces(videoRef.current, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
                     .withFaceLandmarks()
                     .withFaceDescriptors();
 
@@ -126,7 +126,7 @@ function Register() {
         if (!faceDetected) return setErrorMsg("Vision Error: No face detected in frame.");
 
         setErrorMsg('');
-        const detection = await faceapi.detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
+        const detection = await faceapi.detectSingleFace(videoRef.current, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
             .withFaceLandmarks()
             .withFaceDescriptor();
 

@@ -24,7 +24,7 @@ function Attendance() {
                 const [activeSession, users] = await Promise.all([
                     api.sessions.getActive(),
                     api.users.getAll(),
-                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                    faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
                     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
                     faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
                 ]);
@@ -42,8 +42,8 @@ function Attendance() {
 
                         return new faceapi.LabeledFaceDescriptors(user.name, floatDescriptors);
                     });
-                    // Threshold set to 0.45 to support variations (glasses/hats)
-                    matcherRef.current = new faceapi.FaceMatcher(labeledDescriptors, 0.45);
+                    // Threshold set to 0.40 to reduce misidentification (lower is stricter)
+                    matcherRef.current = new faceapi.FaceMatcher(labeledDescriptors, 0.40);
                 }
 
                 startVideo();
@@ -128,7 +128,7 @@ function Attendance() {
                 const displaySize = { width: videoRef.current.width, height: videoRef.current.height };
                 faceapi.matchDimensions(canvasRef.current, displaySize);
 
-                const detections = await faceapi.detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
+                const detections = await faceapi.detectAllFaces(videoRef.current, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
                     .withFaceLandmarks()
                     .withFaceDescriptors();
 
@@ -142,7 +142,7 @@ function Attendance() {
                         const ds = Array.isArray(user.descriptor[0]) ? user.descriptor : [user.descriptor];
                         return new faceapi.LabeledFaceDescriptors(user.name, ds.map(d => new Float32Array(d)));
                     });
-                    matcherRef.current = new faceapi.FaceMatcher(labeledDescriptors, 0.45);
+                    matcherRef.current = new faceapi.FaceMatcher(labeledDescriptors, 0.40);
                 }
 
                 const results = resizedDetections.map(d => matcherRef.current.findBestMatch(d.descriptor));

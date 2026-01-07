@@ -10,15 +10,15 @@ A biometric attendance tracking application that leverages facial recognition te
 
 ## Facial Recognition Models
 
-This project utilizes specific pre-trained models from the `face-api.js` library, located in `client/public/models`. These models are essential for the biometric verification process:
+This project utilizes advanced pre-trained models from the `face-api.js` library, located in `client/public/models`. These models are essential for the high-accuracy biometric verification process:
 
-*   **`tiny_face_detector` (TinyYOLOv2)**: A highly optimized, real-time face detection model based on the **TinyYOLOv2** architecture. It is designed to be lightweight and fast, making it ideal for mobile and web clients where resource usage is a concern.
+*   **`ssd_mobilenetv1` (SSD MobileNet V1)**: A high-accuracy face detection model based on the Single Shot Multibox Detector (SSD) architecture with a MobileNet V1 backbone. It offers superior detection reliability compared to lightweight alternatives, especially in varying lighting conditions.
 *   **`face_landmark_68` (68-Point CNN)**: A lightweight Convolutional Neural Network (CNN) that detects 68 specific points on a face (jawline, eyebrows, nose, etc.). These landmarks are critical for face alignment, ensuring the face is properly oriented before recognition.
-*   **`face_recognition_model` (ResNet-34)**: A deep learning model based on the **ResNet-34** architecture. It computes a unique 128-dimensional descriptor (embedding) for each face. This robust architecture ensures high accuracy in distinguishing individuals, even with slight variations in lighting or pose.
+*   **`face_recognition_model` (ResNet-34)**: A deep learning model based on the **ResNet-34** architecture. It computes a unique 128-dimensional descriptor (embedding) for each face. This robust architecture ensures high accuracy in distinguishing individuals.
 
 ## How it works
 
-The system captures facial images and uses the pre-trained models to extract and identify unique facial features. Instead of storing photos, it converts the face into a mathematical descriptor (a list of numbers representing facial features) and saves only that descriptor in the attendance.db SQLite database. This approach is great for privacy, but it means you cannot view the photos of registered users later.
+The system captures facial images and uses the pre-trained models to extract and identify unique facial features. Instead of storing photos, it converts the face into a mathematical descriptor (a list of numbers representing facial features) and saves only that descriptor in the attendance.db SQLite database. This approach ensures privacy while maintaining high-speed local verification.
 
 ## Installation and Setup
 

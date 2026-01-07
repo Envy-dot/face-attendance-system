@@ -23,7 +23,7 @@ function SessionStatsModal({ stats, onClose }) {
                             <Users size={32} />
                         </div>
                         <div style={{ fontSize: '3rem', fontWeight: 900, color: 'var(--text-main)', lineHeight: 1 }}>{stats.total_students}</div>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginTop: '0.5rem', letterSpacing: '1px' }}>Captured Personnel</div>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginTop: '0.5rem', letterSpacing: '1px' }}>Captured Students</div>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -32,7 +32,7 @@ function SessionStatsModal({ stats, onClose }) {
                                 <LogIn size={20} />
                             </div>
                             <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#166534' }}>{stats.total_in}</div>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#16a34a', textTransform: 'uppercase' }}>Ingress</div>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#16a34a', textTransform: 'uppercase' }}>In</div>
                         </div>
 
                         <div className="card" style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '1.5rem', textAlign: 'center' }}>
@@ -40,7 +40,7 @@ function SessionStatsModal({ stats, onClose }) {
                                 <LogOut size={20} />
                             </div>
                             <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#991b1b' }}>{stats.total_out}</div>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#dc2626', textTransform: 'uppercase' }}>Egress</div>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#dc2626', textTransform: 'uppercase' }}>Out</div>
                         </div>
                     </div>
                 </div>

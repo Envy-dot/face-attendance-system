@@ -8,11 +8,11 @@ function AttendanceLogs({ logs, onDeleteLog }) {
                 <thead>
                     <tr>
                         <th style={{ width: '80px' }}>Imagery</th>
-                        <th>Personnel</th>
+                        <th>Student</th>
                         <th>Session Context</th>
                         <th>Entry Status</th>
                         <th>Exit Status</th>
-                        <th style={{ textAlign: 'right' }}>Purge</th>
+                        <th style={{ textAlign: 'right' }}>Delete</th>
                     </tr>
                 </thead>
                 <tbody>
