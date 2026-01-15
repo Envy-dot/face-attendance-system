@@ -8,7 +8,7 @@ A high-precision biometric attendance application powered by **ArcFace (InsightF
 -   **Backend**: Node.js, Express, `onnxruntime-node`.
 -   **Biometrics**:
     -   **Detection**: Google MediaPipe (Face Detection & Landmarks).
-    -   **Recognition**: ArcFace (ResNet50 ONNX) - 99.8% accuracy on LFW.
+    -   **Recognition**: ArcFace (ResNet50 ONNX) - 99.8% accuracy on LFW (Labeled Faces in the Wild).
     -   **Processing**: Sharp (High-performance image manipulation).
 -   **Database**: SQLite (via `better-sqlite3`).
 
