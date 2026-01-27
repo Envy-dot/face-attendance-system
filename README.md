@@ -72,13 +72,19 @@ The backend handles all recognition logic.
 
 If you encounter native module errors on Windows (e.g., `better-sqlite3` compilation issues):
 
-1. **Ensure Node.js and npm are installed**:
+1. **Change Powershell permissions (IF THERE IS AN ERROR RUNNING SCRIPTS)**:
+    run 
+    ```bash
+    Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned on powershell
+    ```
+
+2. **Ensure Node.js and npm are installed**:
    ```bash
    node --version
    npm --version
    ```
 
-2. **Clear and reinstall dependencies**:
+3. **Clear and reinstall dependencies**:
    ```bash
    # In the server directory
    cd server
@@ -87,23 +93,19 @@ If you encounter native module errors on Windows (e.g., `better-sqlite3` compila
    npm install
    ```
 
-3. **Start the server**:
+4. **Start the server**:
    ```bash
    node index.js
    ```
    *Server runs on port 3001 by default.*
 
-4. **In a new terminal, start the client**:
+5. **In a new terminal, start the client**:
    ```bash
    cd client
    npm install  
    npm run dev
    ```
-5. **Change Powershell permissions**:
-    run 
-    ```bash
-    Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned on powershell
-    ```
+
 
 
 **Note**: If you see "npm is not recognized", restart your terminal or ensure Node.js is in your system PATH.
