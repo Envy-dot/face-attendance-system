@@ -49,6 +49,15 @@ function SessionManager({
 
     const [isCreating, setIsCreating] = useState(false);
 
+    const handleExportMatrix = async (sessionName) => {
+        try {
+            const url = api.attendance.exportMatrixUrl(sessionName);
+            await api.attendance.downloadExportBlob(url, `attendance_matrix_${sessionName.replace(/\s+/g, '_')}.xlsx`);
+        } catch (error) {
+            alert('Failed to export. ' + error.message);
+        }
+    };
+
     const handleCreate = async () => {
         setIsCreating(true);
         await onCreateSession('in', selectedClass);
@@ -180,16 +189,18 @@ function SessionManager({
                 <table>
                     <thead>
                         <tr>
+                            <th>S/N</th>
                             <th>IDENTIFIER</th>
                             <th>CLASS</th>
                             <th>TIMESTAMP (START)</th>
                             <th>STATUS</th>
-                            <th style={{ textAlign: 'right' }}>OPERATIONS</th>
+                            <th style={{ textAlign: 'right' }}>ACTIONS</th>
                         </tr>
                     </thead>
                     <tbody>
                         {sessionHistory.map((hist, index) => (
                             <tr key={hist.id} onClick={() => onGetStats(hist.id)} className="clickable animate-up" style={{ animationDelay: `${index * 0.05}s` }}>
+                                <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>{index + 1}</td>
                                 <td style={{ fontWeight: 800, color: 'var(--text-main)' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <ChevronRight size={14} className="text-primary" />
@@ -197,7 +208,7 @@ function SessionManager({
                                     </div>
                                 </td>
                                 <td>
-                                    {hist.class_code ? <span className="badge badge-primary" style={{ fontSize: '0.75rem' }}>{hist.class_code}</span> : '-'}
+                                    {hist.class_code ? <span className="badge badge-primary" style={{ fontSize: '0.75rem' }}>{hist.class_code}</span> : <span className="badge badge-secondary" style={{ fontSize: '0.75rem' }}>GENERAL</span>}
                                 </td>
                                 <td style={{ color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem' }}>{new Date(hist.start_time).toLocaleString()}</td>
                                 <td>
@@ -232,7 +243,7 @@ function SessionManager({
                         ))}
                         {sessionHistory.length === 0 && (
                             <tr>
-                                <td colSpan="5" style={{ textAlign: 'center', padding: '5rem 2rem', color: 'var(--text-muted)' }}>
+                                <td colSpan="6" style={{ textAlign: 'center', padding: '5rem 2rem', color: 'var(--text-muted)' }}>
                                     <div style={{ fontWeight: 500 }}>Central intelligence repository is empty.</div>
                                 </td>
                             </tr>

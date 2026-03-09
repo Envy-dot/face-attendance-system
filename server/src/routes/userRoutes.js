@@ -5,6 +5,9 @@ const validate = require('../middleware/validate');
 const { registerSchema } = require('../validations/userSchema');
 const multer = require('multer');
 const faceService = require('../services/faceService');
+const fs = require('fs');
+const path = require('path');
+const auth = require('../middleware/auth');
 
 // Configure Multer (Memory Storage)
 const upload = multer({
@@ -35,30 +38,51 @@ router.post('/register', upload.any(), parseFormData, validate(registerSchema), 
     console.log(`[UserRoute] Found ${images.length} candidate images.`);
 
     // req.body contains text fields
-    const { name, matric_no, level, department, course, section, classIds } = req.body;
-    let { descriptor, photo } = req.body;
+    const { name, matric_no, level, department, course, section, classIds, faceLandmarks } = req.body;
+    let { photo } = req.body;
 
-    // Check for multiple files
-    if (images.length > 0) {
+    let descriptor = null;
+    if (faceLandmarks) {
         try {
-            console.log(`Processing ${images.length} images for user ${matric_no} in parallel...`);
-            // Parallelize embedding generation
-            descriptor = await Promise.all(images.map(file => faceService.generateEmbedding(file.buffer)));
-
-            // Set photo to something indicating files were provided
-            if (!photo) photo = "server_processed_image";
+            descriptor = typeof faceLandmarks === 'string' ? JSON.parse(faceLandmarks) : faceLandmarks;
         } catch (error) {
-            console.error("Embedding Error:", error);
-            return res.status(400).json({ success: false, error: error.message });
+            return res.status(400).json({ success: false, error: 'Invalid faceLandmarks' });
         }
-    } else if (req.file) {
-        // Fallback or error if single file field used incorrectly
-        return res.status(400).json({ success: false, error: 'Please upload images using "images" field' });
+    }
+
+    if (images.length > 0) {
+        if (!photo) photo = "server_processed_image";
     }
 
     // fallback if no image/descriptor
     if (!descriptor && !photo) {
         return res.status(400).json({ success: false, error: 'Biometric data required' });
+    }
+
+    // Handle incoming base64 photo for filesystem saving
+    if (photo && photo.startsWith('data:image')) {
+        try {
+            // Remove header (e.g., data:image/jpeg;base64,)
+            const base64Data = photo.replace(/^data:image\/\w+;base64,/, "");
+            const uploadDir = path.join(__dirname, '../../uploads');
+
+            // Create uploads directory if it doesn't exist just in case
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true });
+            }
+
+            const fileName = `user_${matric_no}_${Date.now()}.jpg`;
+            const filePath = path.join(uploadDir, fileName);
+
+            // Write the file
+            fs.writeFileSync(filePath, base64Data, { encoding: 'base64' });
+
+            // Set the database reference to the relative static URL
+            photo = `/uploads/${fileName}`;
+        } catch (err) {
+            console.error("Failed to save image to disk:", err);
+            return res.status(500).json({ success: false, error: 'Failed to save student image.' });
+        }
     }
 
     try {
@@ -79,7 +103,7 @@ router.post('/register', upload.any(), parseFormData, validate(registerSchema), 
 });
 
 // Get all users
-router.get('/', (req, res) => {
+router.get('/', auth, (req, res) => {
     try {
         const { search, sort } = req.query;
         const users = userService.getAllUsers(search, sort);
@@ -94,7 +118,7 @@ router.get('/', (req, res) => {
 });
 
 // Delete user
-router.delete('/:id', (req, res) => {
+router.delete('/:id', auth, (req, res) => {
     try {
         userService.deleteUser(req.params.id);
         res.json({ success: true });

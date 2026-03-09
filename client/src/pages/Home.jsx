@@ -1,50 +1,121 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ScanFace, UserPlus, Camera, Settings } from 'lucide-react';
+import { ScanFace, UserPlus, Camera, Settings, ShieldCheck, HelpCircle, CheckCircle, Clock } from 'lucide-react';
 
 function Home() {
     return (
-        <div className="page-container centered-layout">
-            <div className="animate-up" style={{ maxWidth: '800px', width: '100%' }}>
-                <div className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', marginBottom: '2.5rem', padding: '0.75rem 1.5rem', borderRadius: '100px' }}>
-                    <ScanFace size={16} style={{ marginRight: '8px' }} /> Biometric Identification Grid
-                </div>
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+            {/* Background Blob Effects for Glassmorphism pop */}
+            <div style={{ position: 'fixed', top: '10%', left: '-5%', width: '50vw', height: '50vw', background: 'radial-gradient(circle, var(--primary-glow), transparent 70%)', filter: 'blur(100px)', zIndex: -1, opacity: 0.5 }} />
+            <div style={{ position: 'fixed', bottom: '0%', right: '-10%', width: '40vw', height: '40vw', background: 'radial-gradient(circle, rgba(14, 165, 233, 0.3), transparent 70%)', filter: 'blur(100px)', zIndex: -1, opacity: 0.5 }} />
 
-                <h1 style={{ fontSize: '4.5rem', fontWeight: 900, lineHeight: 1.1, marginBottom: '2.5rem', color: 'var(--text-main)', letterSpacing: '-2px' }}>
-                    Automated Verification via <br /> <span className="text-primary">Facial Scanning</span>
-                </h1>
+            {/* Hero Section */}
+            <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem 2rem', textAlign: 'center' }}>
+                <div className="animate-up" style={{ maxWidth: '900px', width: '100%' }}>
 
-                <p style={{ fontSize: '1.35rem', color: 'var(--text-secondary)', marginBottom: '5rem', maxWidth: '650px', marginInline: 'auto', lineHeight: 1.6 }}>
-                    A reliable, lightning-fast, and completely offline solution for administrative attendance tracking using advanced biometric technology.
-                </p>
+                    <h1 style={{ fontSize: 'clamp(3rem, 5vw, 5rem)', fontWeight: 900, lineHeight: 1.05, marginBottom: '1.5rem', color: 'var(--text-main)', letterSpacing: '-1.5px' }}>
+                        Effortless Attendance via <br />
+                        <span style={{ background: 'linear-gradient(135deg, var(--primary), var(--secondary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                            Facial Recognition
+                        </span>
+                    </h1>
 
-                <div className="flex-center button-gutter" style={{ flexWrap: 'wrap', marginBottom: '8rem' }}>
-                    <Link to="/register" className="btn btn-primary" style={{ padding: '1.25rem 2.5rem', fontSize: '1.15rem', borderRadius: '50px' }}>
-                        <UserPlus size={22} /> Student Enrollment
-                    </Link>
-                    <Link to="/attendance" className="btn btn-secondary" style={{ padding: '1.25rem 2.5rem', fontSize: '1.15rem', borderRadius: '50px' }}>
-                        <Camera size={22} /> Launch Scanner
-                    </Link>
-                </div>
+                    <p style={{ fontSize: '1.25rem', color: 'var(--text-secondary)', marginBottom: '3.5rem', maxWidth: '650px', marginInline: 'auto', lineHeight: 1.6, fontWeight: 500 }}>
+                        Secure and automated attendance tracking using advanced facial recognition.
+                    </p>
 
-                <div className="section-gutter" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '3rem' }}>
-                    <div className="card" style={{ textAlign: 'left', padding: '2rem' }}>
-                        <div style={{ color: 'var(--primary)', marginBottom: '1.25rem', background: 'rgba(37, 99, 235, 0.1)', width: 'fit-content', padding: '1rem', borderRadius: '50%' }}><ScanFace size={32} /></div>
-                        <h3 style={{ marginBottom: '0.75rem', fontWeight: 800 }}>Biometric Integrity</h3>
-                        <p className="text-muted" style={{ fontSize: '0.9rem', lineHeight: 1.6 }}>All facial data is hashed and stored locally. Privacy is baked into the architecture.</p>
+                    <div className="flex-center button-gutter" style={{ marginBottom: '5rem' }}>
+                        <Link to="/attendance" className="btn btn-primary" style={{ padding: '1.2rem 3rem', fontSize: '1.1rem', borderRadius: '50px', boxShadow: '0 0 25px var(--primary-glow)', textDecoration: 'none' }}>
+                            <Camera size={22} /> ENTER SCANNER
+                        </Link>
+                        <Link to="/register" className="btn btn-secondary" style={{ padding: '1.2rem 3rem', fontSize: '1.1rem', borderRadius: '50px', background: 'var(--bg-glass-strong)', backdropFilter: 'blur(10px)', border: '1px solid var(--border-light)', textDecoration: 'none', boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.05)' }}>
+                            <UserPlus size={22} /> REGISTER FACE
+                        </Link>
                     </div>
-                    <div className="card" style={{ textAlign: 'left', padding: '2rem' }}>
-                        <div style={{ color: 'var(--secondary)', marginBottom: '1.25rem', background: 'rgba(14, 165, 233, 0.1)', width: 'fit-content', padding: '1rem', borderRadius: '50%' }}><Camera size={32} /></div>
-                        <h3 style={{ marginBottom: '0.75rem', fontWeight: 800 }}>Neural Processing</h3>
-                        <p className="text-muted" style={{ fontSize: '0.9rem', lineHeight: 1.6 }}>Real-time verification using SSD MobileNet V1 for maximum reliability.</p>
+
+                    {/* Features Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', textAlign: 'left', marginTop: '2rem' }}>
+                        <div className="card" style={{ padding: '2.5rem', borderRadius: '24px', background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.6)' }}>
+                            <div style={{ color: 'var(--primary)', marginBottom: '1.5rem', background: 'var(--bg-glass-strong)', display: 'inline-flex', padding: '1rem', borderRadius: '16px', boxShadow: 'var(--glass-shadow)', border: '1px solid var(--border-light)' }}>
+                                <Settings size={28} />
+                            </div>
+                            <h3 style={{ marginBottom: '1rem', fontWeight: 800, fontSize: '1.35rem', color: 'var(--text-main)' }}>Fully Automated</h3>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', margin: 0, lineHeight: 1.6, fontWeight: 500 }}>
+                                Create strictly timed sessions, restrict access by class enrollment, and export comprehensive attendance matrices globally.
+                            </p>
+                        </div>
+                        <div className="card" style={{ padding: '2.5rem', borderRadius: '24px', background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.6)' }}>
+                            <div style={{ color: 'var(--secondary)', marginBottom: '1.5rem', background: 'var(--bg-glass-strong)', display: 'inline-flex', padding: '1rem', borderRadius: '16px', boxShadow: 'var(--glass-shadow)', border: '1px solid var(--border-light)' }}>
+                                <ShieldCheck size={28} />
+                            </div>
+                            <h3 style={{ marginBottom: '1rem', fontWeight: 800, fontSize: '1.35rem', color: 'var(--text-main)' }}>Real-Time Processing</h3>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', margin: 0, lineHeight: 1.6, fontWeight: 500 }}>
+                                Utilizing browser-based neural networks for fast, secure identification without constant web pings.
+                            </p>
+                        </div>
                     </div>
-                    <div className="card" style={{ textAlign: 'left', padding: '2rem' }}>
-                        <div style={{ color: 'var(--accent)', marginBottom: '1.25rem', background: 'rgba(99, 102, 241, 0.1)', width: 'fit-content', padding: '1rem', borderRadius: '50%' }}><Settings size={32} /></div>
-                        <h3 style={{ marginBottom: '0.75rem', fontWeight: 800 }}>Matrix Reporting</h3>
-                        <p className="text-muted" style={{ fontSize: '0.9rem', lineHeight: 1.6 }}>Automated attendance matrices with session timers and student management.</p>
+
+                    {/* How It Works Section */}
+                    <div style={{ marginTop: '5rem', textAlign: 'left', background: 'var(--bg-glass)', borderRadius: '24px', padding: '3rem', border: '1px solid var(--border-light)', boxShadow: 'var(--glass-shadow)', backdropFilter: 'blur(20px)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem', justifyContent: 'center' }}>
+                            <HelpCircle size={32} className="text-primary" />
+                            <h2 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-main)', margin: 0 }}>System Instructions</h2>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
+                            {/* Step 1 */}
+                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                                <div style={{ background: 'var(--primary)', color: 'white', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0, fontSize: '1.2rem', boxShadow: '0 4px 10px var(--primary-glow)' }}>
+                                    1
+                                </div>
+                                <div>
+                                    <h4 style={{ fontWeight: 800, fontSize: '1.2rem', marginBottom: '0.5rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <UserPlus size={18} /> First-Time Enrollment
+                                    </h4>
+                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.6, margin: 0 }}>
+                                        Before you can mark attendance, navigate to the <strong style={{ color: 'var(--text-main)' }}>Register Face</strong> portal. Enter your academic details and follow the on-screen prompts to capture your facial biometric data. Note: The system will require you to hold still and take two captures for accuracy.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Step 2 */}
+                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                                <div style={{ background: 'var(--secondary)', color: 'white', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0, fontSize: '1.2rem', boxShadow: '0 4px 10px rgba(236,72,153,0.3)' }}>
+                                    2
+                                </div>
+                                <div>
+                                    <h4 style={{ fontWeight: 800, fontSize: '1.2rem', marginBottom: '0.5rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Clock size={18} /> Wait for a Session
+                                    </h4>
+                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.6, margin: 0 }}>
+                                        Attendance can only be marked when a Lecturer has opened an active session for your enrolled class. If no session is active, or if the time limit expires, the scanner will lock you out.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Step 3 */}
+                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                                <div style={{ background: 'var(--success)', color: 'white', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0, fontSize: '1.2rem', boxShadow: '0 4px 10px var(--success-bg)' }}>
+                                    3
+                                </div>
+                                <div>
+                                    <h4 style={{ fontWeight: 800, fontSize: '1.2rem', marginBottom: '0.5rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <CheckCircle size={18} /> Scan to Verify
+                                    </h4>
+                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.6, margin: 0 }}>
+                                        Click <strong style={{ color: 'var(--text-main)' }}>Enter Scanner</strong> to access the webcam. Ensure you are in a well-lit area. Look directly into the camera until the bounding box centers on your face and a success notification appears on screen.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </main>
+
+            {/* Footer */}
+            <footer style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', borderTop: '1px solid var(--border-light)', marginTop: 'auto', fontWeight: 500 }}>
+                &copy; 2026 FaceAttend Biometrics
+            </footer>
         </div>
     );
 }

@@ -37,6 +37,14 @@ db.exec(`
     FOREIGN KEY(class_id) REFERENCES classes(id) ON DELETE CASCADE
   );
 
+  CREATE TABLE IF NOT EXISTS enrollments (
+    user_id INTEGER,
+    class_id INTEGER,
+    PRIMARY KEY (user_id, class_id),
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY(class_id) REFERENCES classes(id) ON DELETE CASCADE
+  );
+
   CREATE TABLE IF NOT EXISTS sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     class_id INTEGER,
@@ -63,6 +71,14 @@ db.exec(`
 
 // Schema Migration for existing databases
 try {
+  db.prepare('ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1').run();
+} catch (error) {
+  if (!error.message.includes('duplicate column name')) {
+    // console.log('Schema migration check:', error.message);
+  }
+}
+
+try {
   db.prepare('ALTER TABLE sessions ADD COLUMN class_id INTEGER REFERENCES classes(id)').run();
 } catch (error) {
   if (!error.message.includes('duplicate column name')) {
@@ -78,4 +94,25 @@ try {
   }
 }
 
+// Check if we need to auto-enroll legacy users into existing classes
+try {
+  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
+  const classCount = db.prepare('SELECT COUNT(*) as count FROM classes').get().count;
+  const enrollmentCount = db.prepare('SELECT COUNT(*) as count FROM enrollments').get().count;
+
+  if (userCount > 0 && classCount > 0 && enrollmentCount === 0) {
+    console.log('Migrating: Auto-enrolling existing users into all classes...');
+    db.prepare(`
+      INSERT INTO enrollments (user_id, class_id)
+      SELECT u.id, c.id
+      FROM users u
+      CROSS JOIN classes c
+    `).run();
+    console.log('Auto-enrollment complete.');
+  }
+} catch (error) {
+  console.error('Auto-enrollment migration failed:', error.message);
+}
+
 module.exports = db;
+

@@ -1,0 +1,530 @@
+{
+    "info": {
+        "name": "Face Attendance System API",
+        "description": "API collection for the Face Attendance System.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://127.0.0.1:3001/api",
+            "type": "string"
+        },
+        {
+            "key": "token",
+            "value": "",
+            "type": "string"
+        }
+    ],
+    "item": [
+        {
+            "name": "Admin",
+            "item": [
+                {
+                    "name": "Login",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.token) {",
+                                    "    pm.collectionVariables.set(\"token\", jsonData.token);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/admin/login",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "login"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Users",
+            "item": [
+                {
+                    "name": "Get All Users",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/users",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "users"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Register User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"John Doe\",\n  \"matric_no\": \"24/1001\",\n  \"department\": \"Computer Science\",\n  \"level\": \"100\",\n  \"course\": \"Software Engineering\",\n  \"descriptor\": \"[...array of 128 floats...]\",\n  \"classIds\": [1, 2]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/users/register",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "users",
+                                "register"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete User",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/users/9999",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "users",
+                                "1"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Classes",
+            "item": [
+                {
+                    "name": "Get All Classes",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/classes",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "classes"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Class",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Introduction to Programming\",\n  \"code\": \"CS101\",\n  \"department\": \"Computer Science\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/classes",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "classes"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Class",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/classes/9999",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "classes",
+                                "1"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Sessions",
+            "item": [
+                {
+                    "name": "Get Active Session",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/sessions/active",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "sessions",
+                                "active"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Session History",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/sessions/history",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "sessions",
+                                "history"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Session",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"action\": \"create\",\n  \"name\": \"Midterm Exam\",\n  \"type\": \"in\",\n  \"duration\": 120,\n  \"class_id\": 1\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/sessions",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "sessions"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Toggle Session (End/Resume)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"action\": \"toggle\",\n  \"id\": 1,\n  \"isActive\": false\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/sessions",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "sessions"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Toggle Session Type (IN/OUT)",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/sessions/9999/type",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "sessions",
+                                "1",
+                                "type"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Session Stats",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/sessions/9999/stats",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "sessions",
+                                "1",
+                                "stats"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Session",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/sessions/9999",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "sessions",
+                                "1"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Attendance",
+            "item": [
+                {
+                    "name": "Get Attendance Logs",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/attendance",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "attendance"
+                            ],
+                            "query": [
+                                {
+                                    "key": "search",
+                                    "value": "",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "sessionId",
+                                    "value": "1",
+                                    "disabled": true
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Mark Attendance",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"userId\": 1,\n  \"image\": \"base64_encoded_string_optional\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/attendance",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "attendance"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Export Matrix",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/attendance/export-matrix?classId=1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "attendance",
+                                "export-matrix"
+                            ],
+                            "query": [
+                                {
+                                    "key": "classId",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "sessionName",
+                                    "value": "Midterm Exam",
+                                    "disabled": true
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Log",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/attendance/9999",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "attendance",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Bulk Delete Logs by Date",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"date\": \"2024-03-01\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/attendance/bulk",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "attendance",
+                                "bulk"
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

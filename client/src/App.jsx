@@ -16,28 +16,16 @@ const ProtectedRoute = ({ children }) => {
 };
 
 // Nav Link component for active state styling
-const NavLink = ({ to, icon: Icon, label }) => {
+const NavLink = ({ to, label }) => {
   const location = useLocation();
-  const isActive = location.pathname === to;
+  const isActive = location.pathname === to || (location.pathname === '/admin' && to === '/admin-login');
 
   return (
     <Link
       to={to}
-      className={`nav-link ${isActive ? 'active' : ''}`}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        padding: '0.6rem 1.25rem',
-        borderRadius: '50px',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        // Colors handled by css class 'nav-links a' but inline overrides if needed
-        textDecoration: 'none',
-        fontSize: '0.95rem'
-      }}
+      className={isActive ? 'active' : ''}
     >
-      <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
-      <span>{label}</span>
+      {label}
     </Link>
   );
 };
@@ -48,19 +36,17 @@ function App() {
       <div className="app-container">
         <LiquidBackground />
 
-        <nav className="navbar">
-          <Link to="/" className="nav-brand">
-            <div style={{ background: 'var(--primary)', color: 'white', padding: '8px', borderRadius: '12px', boxShadow: '0 0 15px var(--primary-glow)' }}>
-              <ScanFace size={24} />
-            </div>
-            <span>FaceAttend</span>
+        <nav className="navbar" style={{ margin: '1rem', borderRadius: 'var(--radius-lg)' }}>
+          <Link to="/" className="nav-brand" style={{ textDecoration: 'none' }}>
+            <ScanFace className="text-primary" size={28} />
+            FaceAttend
           </Link>
 
           <div className="nav-links">
-            <NavLink to="/" icon={HomeIcon} label="Home" />
-            <NavLink to="/register" icon={UserPlus} label="Enroll" />
-            <NavLink to="/attendance" icon={Camera} label="Scanner" />
-            <NavLink to="/admin" icon={Lock} label="Admin" />
+            <NavLink to="/" label="Home" />
+            <NavLink to="/register" label="Enroll" />
+            <NavLink to="/attendance" label="Scanner" />
+            <NavLink to="/admin-login" label="Admin Portal" />
           </div>
         </nav>
 

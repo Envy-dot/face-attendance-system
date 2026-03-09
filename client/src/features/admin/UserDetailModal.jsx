@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, User, Fingerprint, BookOpen, Layers, Landmark, Calendar } from 'lucide-react';
+import { X, User, Camera, BookOpen, Layers, Landmark, Calendar } from 'lucide-react';
 
 function UserDetailModal({ user, onClose }) {
     if (!user) return null;
@@ -26,7 +26,7 @@ function UserDetailModal({ user, onClose }) {
                                 alt={user.name}
                             />
                             <div style={{ position: 'absolute', bottom: '10px', right: '10px', background: 'var(--success)', color: 'white', padding: '6px', borderRadius: '50%', border: '3px solid white' }}>
-                                <Fingerprint size={16} />
+                                <Camera size={16} />
                             </div>
                         </div>
                     ) : (
@@ -40,15 +40,15 @@ function UserDetailModal({ user, onClose }) {
                     <div style={{ gridColumn: 'span 2' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
                             <User size={14} />
-                            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Full Legal Name</span>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Full Name</span>
                         </div>
                         <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-main)' }}>{user.name}</div>
                     </div>
 
                     <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
-                            <Fingerprint size={14} />
-                            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Matriculation</span>
+                            <Camera size={14} />
+                            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Matriculation Number</span>
                         </div>
                         <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--primary)' }}>{user.matric_no}</div>
                     </div>
@@ -56,7 +56,7 @@ function UserDetailModal({ user, onClose }) {
                     <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
                             <Layers size={14} />
-                            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Current Level</span>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Study Level</span>
                         </div>
                         <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)' }}>{user.level || 'Not Set'}</div>
                     </div>
@@ -64,7 +64,7 @@ function UserDetailModal({ user, onClose }) {
                     <div style={{ gridColumn: 'span 2' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
                             <BookOpen size={14} />
-                            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Course Concentration</span>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Course of Study</span>
                         </div>
                         <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)' }}>{user.course || 'Unspecified'}</div>
                     </div>

@@ -6,6 +6,7 @@ const xlsx = require('xlsx');
 const userService = require('../services/userService');
 const db = require('../config/database');
 const multer = require('multer');
+const auth = require('../middleware/auth');
 
 // Configure Multer
 const upload = multer({
@@ -16,16 +17,25 @@ const upload = multer({
 // Log attendance (Scan Face)
 router.post('/', upload.any(), async (req, res) => {
     // userId is NO LONGER required in body if image is provided
-    let { userId } = req.body;
+    let { userId, faceLandmarks } = req.body;
 
     // Find any image file
     const file = req.files ? req.files.find(f => f.mimetype.startsWith('image/')) : null;
 
     try {
-        if (file) {
+        if (faceLandmarks) {
             // VERIFY FACE
-            console.log(`Verifying face from field: ${file.fieldname}...`);
-            const recognizedUserId = await attendanceService.verifyFace(file.buffer);
+            console.log(`Verifying face from provided landmarks...`);
+            let descriptor = faceLandmarks;
+            if (typeof descriptor === 'string') {
+                try {
+                    descriptor = JSON.parse(descriptor);
+                } catch (e) {
+                    return res.status(400).json({ error: 'Invalid faceLandmarks payload' });
+                }
+            }
+
+            const recognizedUserId = await attendanceService.verifyFace(descriptor);
 
             if (!recognizedUserId) {
                 return res.status(401).json({ error: 'Face not recognized' });
@@ -34,7 +44,7 @@ router.post('/', upload.any(), async (req, res) => {
         }
 
         if (!userId) {
-            return res.status(400).json({ error: 'UserId or Image is required' });
+            return res.status(400).json({ error: 'UserId or faceLandmarks is required' });
         }
 
         const activeSession = sessionService.getActiveSession();
@@ -46,11 +56,18 @@ router.post('/', upload.any(), async (req, res) => {
         const sessionMode = activeSession.type;
         const sessionId = activeSession.id;
 
+        // Class Enrollment Restriction
+        if (activeSession.class_id) {
+            const isEnrolled = db.prepare('SELECT 1 FROM enrollments WHERE user_id = ? AND class_id = ?').get(userId, activeSession.class_id);
+            if (!isEnrolled) {
+                return res.status(403).json({ error: 'You are not enrolled in this class session' });
+            }
+        }
+
         // Duplicate check
         if (attendanceService.checkDuplicate(userId, sessionId, sessionMode)) {
-            // We might want to return success if already marked, to avoid error alerts on repeated scans
-            // But strict error helps debugging.
-            return res.status(409).json({ error: 'Already marked for this session' });
+            const user = db.prepare('SELECT name, matric_no FROM users WHERE id = ?').get(userId);
+            return res.status(200).json({ success: true, duplicate: true, user, message: 'Already marked for this session' });
         }
 
         // We can save the scanned image if we want audit trails.
@@ -70,17 +87,17 @@ router.post('/', upload.any(), async (req, res) => {
 });
 
 // Get attendance logs
-router.get('/', (req, res) => {
+router.get('/', auth, (req, res) => {
     try {
-        const { search } = req.query;
-        const logs = attendanceService.getAttendanceLogs(search);
+        const { search, sessionId } = req.query;
+        const logs = attendanceService.getAttendanceLogs(search, sessionId);
         res.json(logs);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-router.delete('/bulk', (req, res) => {
+router.delete('/bulk', auth, (req, res) => {
     const { date } = req.body;
     try {
         if (date) {
@@ -94,7 +111,7 @@ router.delete('/bulk', (req, res) => {
     }
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', auth, (req, res) => {
     try {
         attendanceService.deleteAttendance(req.params.id);
         res.json({ success: true });
@@ -104,7 +121,7 @@ router.delete('/:id', (req, res) => {
 });
 
 // Export Matrix Excel
-router.get('/export-matrix', (req, res) => {
+router.get('/export-matrix', auth, (req, res) => {
     try {
         const { sessionName, classId } = req.query;
 

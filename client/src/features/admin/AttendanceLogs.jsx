@@ -7,7 +7,7 @@ function AttendanceLogs({ logs, onDeleteLog }) {
             <table>
                 <thead>
                     <tr>
-                        <th style={{ width: '80px' }}>Imagery</th>
+                        <th>S/N</th>
                         <th>Student</th>
                         <th>Session Context</th>
                         <th>Verification Time</th>
@@ -17,15 +17,7 @@ function AttendanceLogs({ logs, onDeleteLog }) {
                 <tbody>
                     {logs.map((log, index) => (
                         <tr key={index} className="animate-up" style={{ animationDelay: `${index * 0.05}s` }}>
-                            <td>
-                                {log.image ? (
-                                    <div style={{ position: 'relative' }}>
-                                        <img src={log.image} style={{ width: 50, height: 50, borderRadius: '10px', objectFit: 'cover', border: '2px solid white', boxShadow: 'var(--shadow-md)' }} alt={log.name} />
-                                    </div>
-                                ) : (
-                                    <div style={{ width: 50, height: 50, borderRadius: '10px', background: 'var(--bg-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>-</div>
-                                )}
-                            </td>
+                            <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>{index + 1}</td>
                             <td>
                                 <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '1rem' }}>{log.name}</div>
                                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>{log.matric_no || 'Credential Missing'}</div>

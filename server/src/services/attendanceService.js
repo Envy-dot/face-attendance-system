@@ -1,7 +1,7 @@
 const db = require('../config/database');
 const faceService = require('./faceService');
 
-const THRESHOLD = 0.45; // Strictness for ArcFace
+const THRESHOLD = 0.9; // Strictness for ArcFace
 
 const logAttendance = (userId, sessionId, type, image) => {
     const stmt = db.prepare('INSERT INTO attendance (user_id, session_id, type, image) VALUES (?, ?, ?, ?)');
@@ -15,48 +15,19 @@ const checkDuplicate = (userId, sessionId, type) => {
     return !!stmt.get(userId, sessionId, type);
 };
 
-const verifyFace = async (imageBuffer) => {
-    // 1. Generate Embedding
-    const embedding = await faceService.generateEmbedding(imageBuffer);
+const verifyFace = async (descriptor) => {
+    // The match logic is now entirely handled by faceService.findMatchingFace
+    // which compares the incoming 128D array against all stored descriptors.
+    const match = faceService.findMatchingFace(descriptor);
 
-    // 2. Fetch all users and descriptors
-    // TODO: optimization - cache users or use FAISS/Vector DB if scale is large.
-    // For now, SQL loop is fine for < 1000 users.
-    const users = db.prepare('SELECT id, name, descriptor FROM users').all();
-
-    let bestMatch = { userId: null, score: -1, name: null };
-
-    for (const user of users) {
-        if (!user.descriptor) continue;
-
-        let storedDescriptors = [];
-        try {
-            const parsed = JSON.parse(user.descriptor);
-            // Support both [] and [[]] formats
-            storedDescriptors = Array.isArray(parsed[0]) ? parsed : [parsed];
-        } catch (e) {
-            continue;
-        }
-
-        // Check against all stored descriptors for this user
-        for (const desc of storedDescriptors) {
-            const score = faceService.calculateSimilarity(embedding, desc);
-            if (score > bestMatch.score) {
-                bestMatch = { userId: user.id, score, name: user.name };
-            }
-        }
-    }
-
-    console.log(`Best match: ${bestMatch.name} (${bestMatch.score})`);
-
-    if (bestMatch.score >= THRESHOLD) {
-        return bestMatch.userId;
+    if (match) {
+        return match.userId;
     }
 
     return null;
 };
 
-const getAttendanceLogs = (search) => {
+const getAttendanceLogs = (search, sessionIdParam = null) => {
     let query = `
     SELECT a.id, strftime('%Y-%m-%dT%H:%M:%SZ', a.timestamp) as timestamp, a.type, a.image, u.name, u.matric_no, u.level, u.department, s.name as session_name
     FROM attendance a 
@@ -65,9 +36,20 @@ const getAttendanceLogs = (search) => {
   `;
 
     const params = [];
+    const conditions = [];
+
     if (search) {
-        query += ' WHERE u.name LIKE ? OR u.matric_no LIKE ? OR date(a.timestamp) = ?';
+        conditions.push('(u.name LIKE ? OR u.matric_no LIKE ? OR date(a.timestamp) = ?)');
         params.push(`%${search}%`, `%${search}%`, search);
+    }
+
+    if (sessionIdParam) {
+        conditions.push('a.session_id = ?');
+        params.push(sessionIdParam);
+    }
+
+    if (conditions.length > 0) {
+        query += ' WHERE ' + conditions.join(' AND ');
     }
 
     query += ' ORDER BY a.timestamp DESC';
@@ -99,11 +81,11 @@ const getAttendanceMatrix = (classId) => {
 
     if (sessions.length === 0) return { sessions: [], data: [] };
 
-    // 2. Get all students (filter by class if classId is provided)
+    // 2. Get all students explicitly enrolled (including soft deleted since we want historical matrix accuracy)
     let userQuery = `
         SELECT u.id, u.name, u.matric_no
         FROM users u
-        ${classId ? 'JOIN user_classes uc ON u.id = uc.user_id WHERE uc.class_id = ?' : ''}
+        ${classId ? 'JOIN enrollments e ON u.id = e.user_id WHERE e.class_id = ?' : ''}
         ORDER BY u.name ASC
     `;
     const users = db.prepare(userQuery).all(...(classId ? [classId] : []));
@@ -125,8 +107,9 @@ const getAttendanceMatrix = (classId) => {
         attendanceMap[`${r.user_id}_${r.session_id}`] = true;
     });
 
-    const matrix = users.map(user => {
+    const matrix = users.map((user, index) => {
         const row = {
+            'S/N': index + 1,
             name: user.name,
             matric_no: user.matric_no,
             attendance: {}

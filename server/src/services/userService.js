@@ -45,10 +45,7 @@ const registerUser = (user) => {
 
     // Handle Class Enrollment
     if (classIds && Array.isArray(classIds)) {
-        // Remove existing enrollments to be safe (or just ignore constraint errors)
-        // ideally we might want to be additive, but for now let's assume registration sets the state
-        // For simplicity in this flow, we will INSERT OR IGNORE
-        const insertClass = db.prepare('INSERT OR IGNORE INTO user_classes (user_id, class_id) VALUES (?, ?)');
+        const insertClass = db.prepare('INSERT OR IGNORE INTO enrollments (user_id, class_id) VALUES (?, ?)');
         classIds.forEach(cId => {
             try {
                 insertClass.run(userId, cId);
@@ -61,12 +58,12 @@ const registerUser = (user) => {
 
 const getAllUsers = (search, sort) => {
     let query = `
-        SELECT u.id, u.name, u.matric_no, u.level, u.department, u.course, u.photo, u.descriptor, u.section, 
+        SELECT u.id, u.name, u.matric_no, u.level, u.department, u.course, u.photo, u.descriptor, u.section, u.is_active,
         strftime('%Y-%m-%dT%H:%M:%SZ', u.created_at) as created_at,
         GROUP_CONCAT(c.code, ', ') as enrolled_classes
         FROM users u
-        LEFT JOIN user_classes uc ON u.id = uc.user_id
-        LEFT JOIN classes c ON uc.class_id = c.id
+        LEFT JOIN enrollments e ON u.id = e.user_id
+        LEFT JOIN classes c ON e.class_id = c.id
     `;
     const params = [];
 
@@ -88,10 +85,8 @@ const getAllUsers = (search, sort) => {
 };
 
 const deleteUser = (id) => {
-    // Delete attendance first to satisfy foreign key constraints (or logical cleanup)
-    db.prepare('DELETE FROM attendance WHERE user_id = ?').run(id);
-    db.prepare('DELETE FROM user_classes WHERE user_id = ?').run(id);
-    const stmt = db.prepare('DELETE FROM users WHERE id = ?');
+    // Perform Soft Delete
+    const stmt = db.prepare('UPDATE users SET is_active = 0 WHERE id = ?');
     return stmt.run(id);
 };
 
@@ -100,3 +95,4 @@ module.exports = {
     getAllUsers,
     deleteUser
 };
+

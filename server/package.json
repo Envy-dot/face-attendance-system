@@ -11,7 +11,9 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@aws-sdk/client-rekognition": "^3.995.0",
     "@mediapipe/tasks-vision": "^0.10.22-rc.20250304",
+    "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.5.0",
     "body-parser": "^2.2.1",
     "canvas": "^3.2.1",
@@ -20,6 +22,7 @@
     "express": "^5.2.1",
     "joi": "^18.0.2",
     "jsdom": "^27.4.0",
+    "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
     "nodemon": "^3.1.11",
     "onnxruntime-node": "^1.23.2",

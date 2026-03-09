@@ -1,20 +1,33 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
+import { ShieldAlert, Lock, ArrowRight, ShieldCheck, User } from 'lucide-react';
+import { api } from '../api';
 
 function AdminLogin() {
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        // switch to a server side check for authentication. for now, I'm making this hardcoded
-        if (password === 'admin123') {
-            localStorage.setItem('isAdmin', 'true');
-            navigate('/admin');
-        } else {
-            setError('The administrative credential provided is incorrect.');
+        setLoading(true);
+        setError('');
+
+        try {
+            const result = await api.admin.login({ username, password });
+            if (result.success) {
+                localStorage.setItem('adminToken', result.token);
+                localStorage.setItem('isAdmin', 'true');
+                navigate('/admin');
+            } else {
+                setError(result.error || 'Authentication denied.');
+            }
+        } catch (err) {
+            setError('System offline or unreachable.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -31,6 +44,22 @@ function AdminLogin() {
                 </p>
 
                 <form onSubmit={handleLogin}>
+                    <div style={{ marginBottom: '1.5rem', textAlign: 'left' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.6rem' }}>
+                            <User size={14} className="text-secondary" />
+                            <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Administrator ID</label>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Enter username"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            style={{ background: 'var(--bg-main)', border: error ? '1px solid var(--danger)' : '1px solid var(--border-light)' }}
+                            required
+                            disabled={loading}
+                        />
+                    </div>
+
                     <div style={{ marginBottom: '2rem', textAlign: 'left' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.6rem' }}>
                             <Lock size={14} className="text-secondary" />
@@ -43,6 +72,7 @@ function AdminLogin() {
                             onChange={(e) => setPassword(e.target.value)}
                             style={{ background: 'var(--bg-main)', border: error ? '1px solid var(--danger)' : '1px solid var(--border-light)' }}
                             required
+                            disabled={loading}
                         />
                         {error && (
                             <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
@@ -51,8 +81,8 @@ function AdminLogin() {
                         )}
                     </div>
 
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1.1rem', fontSize: '1.1rem', fontWeight: 800 }}>
-                        AUTHORIZE SESSION <ArrowRight size={20} style={{ marginLeft: '8px' }} />
+                    <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%', padding: '1.1rem', fontSize: '1.1rem', fontWeight: 800, opacity: loading ? 0.7 : 1 }}>
+                        {loading ? 'VERIFYING...' : 'AUTHORIZE SESSION'} <ArrowRight size={20} style={{ marginLeft: '8px' }} />
                     </button>
                 </form>
 

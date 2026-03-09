@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, Plus, Trash2, Layers } from 'lucide-react';
 import { api } from '../../api';
 
-function ClassManager() {
+function ClassManager({ debouncedSearch = '' }) {
     const [classes, setClasses] = useState([]);
     const [newClass, setNewClass] = useState({ name: '', code: '', department: '' });
 
@@ -47,8 +47,13 @@ function ClassManager() {
         }
     };
 
-    const handleExport = (classId) => {
-        window.open(api.attendance.exportMatrixUrl(classId, true), '_blank');
+    const handleExport = async (classId) => {
+        try {
+            const url = api.attendance.exportMatrixUrl(classId, true);
+            await api.attendance.downloadExportBlob(url, `class_matrix_${classId}.xlsx`);
+        } catch (error) {
+            alert('Failed to export. ' + error.message);
+        }
     };
 
     return (
@@ -99,6 +104,7 @@ function ClassManager() {
                 <table>
                     <thead>
                         <tr>
+                            <th>S/N</th>
                             <th>CODE</th>
                             <th>TITLE</th>
                             <th>DEPARTMENT</th>
@@ -106,8 +112,12 @@ function ClassManager() {
                         </tr>
                     </thead>
                     <tbody>
-                        {classes.map((cls, i) => (
+                        {classes.filter(cls =>
+                            cls.code.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                            cls.name.toLowerCase().includes(debouncedSearch.toLowerCase())
+                        ).map((cls, i) => (
                             <tr key={cls.id} className="animate-up" style={{ animationDelay: `${i * 0.05}s` }}>
+                                <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>{i + 1}</td>
                                 <td style={{ fontWeight: 800, color: 'var(--primary)' }}>{cls.code}</td>
                                 <td style={{ fontWeight: 600 }}>{cls.name}</td>
                                 <td className="text-muted">{cls.department || '-'}</td>
@@ -117,7 +127,7 @@ function ClassManager() {
                                         className="btn btn-secondary"
                                         style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
                                     >
-                                        EXPORT MATRIX
+                                        EXPORT RECORDS
                                     </button>
                                     <button
                                         onClick={() => handleDelete(cls.id)}
@@ -129,13 +139,16 @@ function ClassManager() {
                                 </td>
                             </tr>
                         ))}
-                        {classes.length === 0 && (
-                            <tr>
-                                <td colSpan="4" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                                    No classes defined yet.
-                                </td>
-                            </tr>
-                        )}
+                        {classes.filter(cls =>
+                            cls.code.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                            cls.name.toLowerCase().includes(debouncedSearch.toLowerCase())
+                        ).length === 0 && (
+                                <tr>
+                                    <td colSpan="5" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                                        No classes matching your query were found.
+                                    </td>
+                                </tr>
+                            )}
                     </tbody>
                 </table>
             </div>

@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-const modelsDir = path.join(__dirname, '../models');
+const modelsDir = path.join(__dirname, 'models');
 
 if (!fs.existsSync(modelsDir)) {
     fs.mkdirSync(modelsDir, { recursive: true });
@@ -11,7 +11,7 @@ if (!fs.existsSync(modelsDir)) {
 const models = [
     {
         name: 'w600k_r50.onnx',
-        url: 'https://github.com/kby-ai/FaceRecognition-ONNX/raw/main/models/w600k_r50.onnx' // Example source, usually reliable for this specific model
+        url: 'https://huggingface.co/maze/faceX/resolve/main/w600k_r50.onnx'
     },
     {
         name: 'blaze_face_short_range.tflite',

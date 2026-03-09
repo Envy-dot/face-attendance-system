@@ -33,17 +33,35 @@ function Admin() {
     // Form inputs
     const [newSessionName, setNewSessionName] = useState('');
     const [newSessionDuration, setNewSessionDuration] = useState('60');
-    const [searchQuery, setSearchQuery] = useState('');
     const [bulkDate, setBulkDate] = useState('');
 
+    // Debounce state for live search
+    const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
     const navigate = useNavigate();
+
+    // Clear modally elevated states specifically on tab switching to prevent "blooming"
+    useEffect(() => {
+        setSelectedUser(null);
+        setSelectedSessionStats(null);
+
+        if (activeTab === 'classes') setSearchQuery('');
+    }, [activeTab]);
 
     useEffect(() => {
         fetchActiveSession();
         if (activeTab === 'users') fetchUsers();
         if (activeTab === 'logs') fetchLogs();
         if (activeTab === 'sessions') fetchSessionHistory();
-    }, [activeTab]);
+    }, [activeTab, debouncedSearch]);
 
     const handleLogout = () => {
         if (window.confirm("Securely sign out of administrative panel?")) {
@@ -53,12 +71,12 @@ function Admin() {
     };
 
     const fetchUsers = async () => {
-        const data = await api.users.getAll(searchQuery);
+        const data = await api.users.getAll(debouncedSearch);
         setUsers(data);
     };
 
     const fetchLogs = async () => {
-        const data = await api.attendance.getLogs(searchQuery);
+        const data = await api.attendance.getLogs(debouncedSearch);
         const grouped = {};
         data.forEach(log => {
             const key = `${log.session_name || 'N/A'}_${log.matric_no || 'Unknown'}`;
@@ -160,8 +178,13 @@ function Admin() {
         setSelectedSessionStats(data);
     };
 
-    const handleExportMatrix = (sessionName) => {
-        window.open(api.attendance.exportMatrixUrl(sessionName), '_blank');
+    const handleExportMatrix = async (sessionName) => {
+        try {
+            const url = api.attendance.exportMatrixUrl(sessionName);
+            await api.attendance.downloadExportBlob(url, `attendance_matrix_${sessionName.replace(/\s+/g, '_')}.xlsx`);
+        } catch (error) {
+            alert('Failed to export. ' + error.message);
+        }
     };
 
     return (
@@ -212,7 +235,7 @@ function Admin() {
                         </button>
                     ))}
                     <div style={{ width: '1px', background: 'var(--border-light)', margin: '0.5rem' }} />
-                    <button onClick={handleLogout} className="btn" style={{ color: 'var(--danger)', padding: '0.6rem 1rem' }}>
+                    <button onClick={handleLogout} className="btn btn-danger" style={{ padding: '0.6rem 1rem' }}>
                         <LogOut size={16} /> Sign Out
                     </button>
                 </div>
@@ -225,9 +248,8 @@ function Admin() {
                             <div style={{ display: 'flex', gap: '0.75rem', flex: 1 }}>
                                 <div style={{ position: 'relative', flex: 1, maxWidth: '350px' }}>
                                     <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                    <input placeholder="Search logs..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ paddingLeft: '3rem' }} />
+                                    <input placeholder="Search logs live..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ paddingLeft: '3rem' }} />
                                 </div>
-                                <button className="btn btn-primary" onClick={fetchLogs}>Filter</button>
                             </div>
                             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                                 <input type="date" value={bulkDate} onChange={e => setBulkDate(e.target.value)} style={{ width: 'auto' }} />
@@ -248,9 +270,8 @@ function Admin() {
                         <div style={{ marginBottom: '2.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
                             <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
                                 <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                <input placeholder="Filter by Name or Matric..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ paddingLeft: '3rem' }} />
+                                <input placeholder="Filter live by Name or Matric..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ paddingLeft: '3rem' }} />
                             </div>
-                            <button className="btn btn-primary" onClick={fetchUsers}>Execute Search</button>
                             <span className="text-secondary" style={{ fontSize: '0.9rem', marginLeft: 'auto' }}>Total: {users.length} Students</span>
                         </div>
                         <UserTable users={users} onDeleteUser={handleDeleteUser} onUserClick={setSelectedUser} />
@@ -258,24 +279,40 @@ function Admin() {
                 )}
 
                 {activeTab === 'sessions' && (
-                    <SessionManager
-                        activeSession={activeSession}
-                        sessionHistory={sessionHistory}
-                        newSessionName={newSessionName}
-                        setNewSessionName={setNewSessionName}
-                        newSessionDuration={newSessionDuration}
-                        setNewSessionDuration={setNewSessionDuration}
-                        onCreateSession={handleCreateSession}
-                        onToggleSessionType={handleToggleSessionType}
-                        onEndSession={handleEndSession}
-                        onDeleteSession={handleDeleteSession}
-                        onGetStats={handleGetStats}
-                        onExportMatrix={handleExportMatrix}
-                    />
+                    <div style={{ padding: '2.5rem' }}>
+                        <div style={{ marginBottom: '2.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                            <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+                                <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                <input placeholder="Filter live by Session Name..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ paddingLeft: '3rem' }} />
+                            </div>
+                        </div>
+                        <SessionManager
+                            activeSession={activeSession}
+                            sessionHistory={sessionHistory.filter(s => s.name.toLowerCase().includes(debouncedSearch.toLowerCase()))}
+                            newSessionName={newSessionName}
+                            setNewSessionName={setNewSessionName}
+                            newSessionDuration={newSessionDuration}
+                            setNewSessionDuration={setNewSessionDuration}
+                            onCreateSession={handleCreateSession}
+                            onToggleSessionType={handleToggleSessionType}
+                            onEndSession={handleEndSession}
+                            onDeleteSession={handleDeleteSession}
+                            onGetStats={handleGetStats}
+                            onExportMatrix={handleExportMatrix}
+                        />
+                    </div>
                 )}
 
                 {activeTab === 'classes' && (
-                    <ClassManager />
+                    <div style={{ padding: '2.5rem' }}>
+                        <div style={{ marginBottom: '2.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                            <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+                                <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                <input placeholder="Filter live by Class Code or Title..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ paddingLeft: '3rem' }} />
+                            </div>
+                        </div>
+                        <ClassManager debouncedSearch={debouncedSearch} />
+                    </div>
                 )}
             </div>
 

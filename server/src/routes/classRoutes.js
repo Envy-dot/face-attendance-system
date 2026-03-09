@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const classService = require('../services/classService');
+const auth = require('../middleware/auth');
 
 router.get('/', (req, res) => {
     try {
@@ -11,7 +12,7 @@ router.get('/', (req, res) => {
     }
 });
 
-router.post('/', (req, res) => {
+router.post('/', auth, (req, res) => {
     try {
         const { name, code, department } = req.body;
         if (!name || !code) return res.status(400).json({ error: 'Name and Code are required' });
@@ -22,7 +23,7 @@ router.post('/', (req, res) => {
     }
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', auth, (req, res) => {
     try {
         classService.deleteClass(req.params.id);
         res.json({ success: true });

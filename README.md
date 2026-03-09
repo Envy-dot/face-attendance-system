@@ -1,25 +1,31 @@
 # Face Attendance System
 
-A high-precision biometric attendance application powered by **ArcFace (InsightFace)** and **MediaPipe**. This system features a React-based client for image capture and a robust Node.js backend for secure facial recognition and attendance tracking.
+A high-precision biometric attendance application. This system features a React-based client for image capture and a robust Node.js backend for secure facial recognition, JWT authentication, and attendance tracking.
 
 ## Technologies Used
 
--   **Frontend**: React (Vite) - Serves as a capture interface.
--   **Backend**: Node.js, Express, `onnxruntime-node`.
+-   **Frontend**: React (Vite) - Interfaces with the webcam and renders administration panels.
+-   **Backend**: Node.js, Express, JWT, `multer`.
 -   **Biometrics**:
-    -   **Detection**: Google MediaPipe (Face Detection & Landmarks).
-    -   **Recognition**: ArcFace (ResNet50 ONNX) - 99.8% accuracy on LFW (Labeled Faces in the Wild).
-    -   **Processing**: Sharp (High-performance image manipulation).
--   **Database**: SQLite (via `better-sqlite3`).
+    -   **Detection & Recognition**: `face-api.js` (SSD MobileNet V1, 68 Point Face Landmark, ResNet-34 Face Recognition).
+    -   **Processing**: Models run directly on the frontend edge, sending only mathematical 128-dimensional Float32 descriptor arrays to the backend for identity verification.
+-   **Database**: SQLite (`better-sqlite3`).
 
 ## Facial Recognition Pipeline
 
-The system processes biometrics securely on the server:
-1.  **Capture**: Client captures a high-quality image via webcam.
-2.  **Detection**: Server uses **MediaPipe** (or BlazeFace) to locate the face and 6 facial landmarks.
-3.  **Alignment**: Face is cropped and aligned to a standard 112x112 pixel grid.
-4.  **Embedding**: **ArcFace** generates a 512-dimensional vector embedding.
-5.  **Matching**: Server computes Cosine Similarity against the registered user database (Threshold: 0.45).
+The system processes biometrics securely to minimize server load:
+1.  **Capture**: Client captures a webcam frame.
+2.  **Detection (Edge)**: Web browser runs `face-api.js` to detect a face, generate bounding boxes, and compute a 128D mathematical descriptor using WebGL/WASM.
+3.  **Transmission**: The frontend sends the 128D floating-point array (not the image) to the backend.
+4.  **Matching (Backend)**: Server calculates the Euclidean Distance between the incoming array and all stored `face_descriptor` arrays in the SQLite DB.
+5.  **Logging**: If Euclidean distance < `0.45`, the face is verified, and the user is logged into the active session.
+
+## Security & Features
+
+- **Strict Session Auto-Termination**: The backend database enforces strict time-based expirations natively. The `Active Session` API strictly checks `start_time + duration`. If expired, it automatically overrides `is_active` to `0` and throws `403 Forbidden` to any incoming biometric requests before they are parsed.
+- **JWT Authorization**: Admin panels and endpoints (`/api/admin`, `/api/classes`, `/api/sessions`, `/api/attendance`) are strictly protected via signed JSON Web Tokens (`Authorization: Bearer <token>`).
+- **Secure File Exports**: Attendance matrices (Class and Session level) are generated on the server as XLSX buffers. The frontend securely fetches these as `Blob` objects via JWT-authorized headers, rendering native local downloads.
+- **Optimized Image Storage**: User photos are compressed and structurally routed to `server/uploads/` rather than bloating the SQLite `.db` file via Base64. 
 
 ## Prerequisites
 
@@ -33,7 +39,7 @@ Before setting up the project, ensure you have the following installed on your s
 
 ### 1. Server (Backend)
 
-The backend handles all recognition logic.
+The backend handles all SQLite queries, JWT logic, and Euclidean Distance comparisons.
 
 1.  Navigate to the server directory:
     ```bash
@@ -43,16 +49,11 @@ The backend handles all recognition logic.
     ```bash
     npm install
     ```
-3.  **Download Models**:
-    Run the setup script to download the required ONNX and TFLite models to `server/models/`.
+3.  Start the server:
     ```bash
-    node setup_models.js
+    npm run dev
     ```
-4.  Start the server:
-    ```bash
-    npm start
-    ```
-    *Server runs on port 3000 by default.*
+    *Server runs on port 3001 by default.*
 
 ### 2. Client (Frontend)
 
@@ -68,78 +69,16 @@ The backend handles all recognition logic.
     ```bash
     npm run dev
     ```
-### Windows Setup
 
-If you encounter native module errors on Windows (e.g., `better-sqlite3` compilation issues):
-
-1. **Change Powershell permissions (IF THERE IS AN ERROR RUNNING SCRIPTS)**:
-    run 
-    ```bash
-    Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned on powershell
-    ```
-
-2. **Ensure Node.js and npm are installed**:
-   ```bash
-   node --version
-   npm --version
-   ```
-
-3. **Clear and reinstall dependencies**:
-   ```bash
-   # In the server directory
-   cd server
-   rmdir /s /q node_modules
-   del package-lock.json
-   npm install
-   ```
-
-4. **Start the server**:
-   ```bash
-   node index.js
-   ```
-   *Server runs on port 3001 by default.*
-
-5. **In a new terminal, start the client**:
-   ```bash
-   cd client
-   npm install  
-   npm run dev
-   ```
-
-
-
-**Note**: If you see "npm is not recognized", restart your terminal or ensure Node.js is in your system PATH.
+## Default Admin Login
+To access the `/admin` portal, use the default credentials defined in `server/.env`:
+- **Username**: `admin`
+- **Password**: `admin123`
 
 ## Troubleshooting
 
--   **"ClassIds" error**: Ensure your server is running the latest code with the JSON parsing middleware.
--   **Models missing**: Run `node setup_models.js` in the `server` folder.
--   **Recognition Fails**: Ensure good lighting. The system enforces strict matching (0.45 threshold) to prevent false positives.
--   **Native module errors on Windows**: Follow the Windows Setup section above to rebuild dependencies.
-
-## System Capacity & Privacy
-
--   **Database**: The `attendance.db` is a local SQLite file.
--   **Privacy**: 
-    -   Actual images are **NOT** stored by default (configurable).
-    -   Only mathematical face descriptors (512-float arrays) are saved.
--   **Capacity**: 
-    -   Server-side matching is highly efficient.
-    -   Supports 1,000+ users with negligible latency on standard CPU hardware.
-    -   No GPU required (uses ONNX Runtime CPU provider).
-
-## Troubleshooting
-
--   **"npm is not recognized" (Windows)**:
-    -   **Cause**: Node.js is not installed, or its path is not added to the system's environment variables.
-    -   **Solution**: 
-        1.  Download and install Node.js from [nodejs.org](https://nodejs.org/). 
-        2.  Make sure to check "Add to PATH" during installation.
-        3.  **Restart your terminal** (PowerShell or Command Prompt) after installation.
--   **"install npm" error**:
-    -   The command is `npm install`, not `install npm`. `npm` is the tool, and `install` is the action.
--   **"ClassIds" error**: Ensure your server is running the latest code with the JSON parsing middleware.
--   **Models missing**: Run `node setup_models.js` in the `server` folder.
--   **Recognition Fails**: Ensure good lighting. The system enforces strict matching (0.45 threshold) to prevent false positives.
+-   **"Failed to load models"**: Ensure you have strictly downloaded the `.bin` and `.json` files into `client/public/models/`. Do not right-click "Save As" on Github or you will download HTML corruptions. Use raw links.
+-   **"Authentication token missing"**: Ensure you have successfully logged in via `/admin-login`. The token is stored in `localStorage.adminToken`.
+-   **"Face not recognized"**: The Euclidean distance threshold is strictly set to `< 0.45`. Try to ensure the room is well-lit and the face is fully visible.
 
 

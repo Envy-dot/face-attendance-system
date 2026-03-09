@@ -1,12 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const sessionService = require('../services/sessionService');
+const auth = require('../middleware/auth');
 
-router.post('/', (req, res) => {
-    const { name, type, action, id, duration } = req.body;
+router.post('/', auth, (req, res) => {
+    const { name, type, action, id, duration, class_id } = req.body;
     try {
         if (action === 'create') {
-            const session = sessionService.createSession(name, type || 'in', duration || 0);
+            const parsedClassId = class_id ? parseInt(class_id, 10) : null;
+            const session = sessionService.createSession(name, type || 'in', duration || 0, parsedClassId);
             res.json(session);
         } else if (action === 'toggle') {
             sessionService.toggleSession(id, req.body.isActive);
@@ -28,7 +30,7 @@ router.get('/active', (req, res) => {
     }
 });
 
-router.get('/history', (req, res) => {
+router.get('/history', auth, (req, res) => {
     try {
         const sessions = sessionService.getSessionHistory();
         res.json(sessions);
@@ -37,7 +39,7 @@ router.get('/history', (req, res) => {
     }
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', auth, (req, res) => {
     try {
         sessionService.deleteSession(req.params.id);
         res.json({ success: true });
@@ -46,7 +48,7 @@ router.delete('/:id', (req, res) => {
     }
 });
 
-router.put('/:id/type', (req, res) => {
+router.put('/:id/type', auth, (req, res) => {
     try {
         const newType = sessionService.toggleSessionType(req.params.id);
         res.json({ success: true, newType });
@@ -55,7 +57,7 @@ router.put('/:id/type', (req, res) => {
     }
 });
 
-router.get('/:id/stats', (req, res) => {
+router.get('/:id/stats', auth, (req, res) => {
     try {
         const stats = sessionService.getSessionStats(req.params.id);
         res.json(stats);

@@ -2,18 +2,24 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const path = require('path');
 
 const userRoutes = require('./src/routes/userRoutes');
 const attendanceRoutes = require('./src/routes/attendanceRoutes');
 const sessionRoutes = require('./src/routes/sessionRoutes');
+const adminRoutes = require('./src/routes/adminRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
-app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.json({ limit: '50mb' }));
+
+// Static file serving for uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
+app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/sessions', sessionRoutes);
@@ -47,15 +53,7 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('UNHANDLED REJECTION at:', promise, 'reason:', reason);
 });
 
-app.listen(PORT, '127.0.0.1', async () => {
+app.listen(PORT, '127.0.0.1', () => {
     console.log(`Server running on http://127.0.0.1:${PORT}`);
-
-    // Pre-load Models
-    try {
-        const faceService = require('./src/services/faceService');
-        await faceService.loadModels();
-    } catch (err) {
-        console.error("Critical Failure: Could not load AI models on startup.");
-    }
 });
 

@@ -3,12 +3,13 @@ const db = require('../config/database');
 const createSession = (name, type = 'in', duration = 0, classId = null) => {
     // Deactivate all other sessions first
     db.prepare('UPDATE sessions SET is_active = 0').run();
-    const stmt = db.prepare('INSERT INTO sessions (name, type, duration, class_id) VALUES (?, ?, ?, ?)');
-    const info = stmt.run(name, type, duration, classId);
+    const stmt = db.prepare('INSERT INTO sessions (class_id, name, type, duration) VALUES (?, ?, ?, ?)');
+    const info = stmt.run(classId, name, type, duration);
     return { id: info.lastInsertRowid, name, type, duration, class_id: classId, is_active: 1 };
 };
 
 const getActiveSession = () => {
+    // 1. Fetch the raw active session
     const stmt = db.prepare(`
         SELECT s.*, c.code as class_code, c.name as class_name 
         FROM sessions s 
@@ -17,12 +18,28 @@ const getActiveSession = () => {
         ORDER BY s.id DESC LIMIT 1
     `);
     const session = stmt.get();
+
     if (session) {
         // SQLite CURRENT_TIMESTAMP is 'YYYY-MM-DD HH:MM:SS' (UTC)
         // We must append 'Z' to ensure JS parses it as UTC, not Local
         const utcString = session.start_time.replace(' ', 'T') + 'Z';
         session.start_time = new Date(utcString).toISOString();
+
+        // 2. Auto-Termination Check
+        const duration = parseInt(session.duration, 10) || 0;
+        if (duration > 0) {
+            const startTimeMs = new Date(session.start_time).getTime();
+            const nowMs = Date.now();
+            const expiryTimeMs = startTimeMs + (duration * 60000);
+
+            if (nowMs >= expiryTimeMs) {
+                console.log(`[Auto-Terminate] Session ${session.id} expired natively. Marking inactive.`);
+                db.prepare('UPDATE sessions SET is_active = 0 WHERE id = ?').run(session.id);
+                return null;
+            }
+        }
     }
+
     return session || null;
 };
 
@@ -37,6 +54,7 @@ const getSessionHistory = () => {
 };
 
 const deleteSession = (id) => {
+    db.prepare('DELETE FROM attendance WHERE session_id = ?').run(id);
     const stmt = db.prepare('DELETE FROM sessions WHERE id = ?');
     return stmt.run(id);
 };

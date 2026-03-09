@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { UserCheck, Camera, Info, AlertCircle, CheckCircle, RefreshCw, Layers } from 'lucide-react';
 import { api } from '../api';
-import { FaceDetector, FilesetResolver } from "@mediapipe/tasks-vision";
+import * as faceapi from 'face-api.js';
 
 function Register() {
     const [formData, setFormData] = useState({
@@ -20,12 +20,13 @@ function Register() {
     const [msg, setMsg] = useState({ type: '', text: '' });
     const [poseStep, setPoseStep] = useState(0); // 0: Front, 1: Angle/Glasses-off
     const [captures, setCaptures] = useState([]);
+    const [faceLandmarksPayload, setFaceLandmarksPayload] = useState(null); // The 128D array
     const [guidance, setGuidance] = useState(null); // Real-time feedback overlay
+
+    // Bounding Box state removed, using Canvas Ref instead
 
     const videoRef = useRef();
     const canvasRef = useRef(); // Bounding box overlay
-    const faceDetectorRef = useRef(null);
-    const lastDetectionTime = useRef(0);
     const detectionFrameRef = useRef(null);
 
     // Refs for Loop Access (Fix Stale Closures)
@@ -52,23 +53,19 @@ function Register() {
                 const cls = await api.classes.getAll();
                 setClasses(Array.isArray(cls) ? cls : []);
 
-                // 2. Load Face Detector
-                const vision = await FilesetResolver.forVisionTasks(
-                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
-                );
-                faceDetectorRef.current = await FaceDetector.createFromOptions(vision, {
-                    baseOptions: {
-                        modelAssetPath: `/models/blaze_face_short_range.tflite`,
-                        delegate: "GPU"
-                    },
-                    runningMode: "VIDEO",
-                    minDetectionConfidence: 0.5 // Lowered to help detection
-                });
+                // 2. Load face-api.js models from '/models'
+                setMsg({ type: 'info', text: "Loading AI models... Please wait." });
+                await Promise.all([
+                    faceapi.nets.ssdMobilenetv1.loadFromUri('/models'),
+                    faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
+                    faceapi.nets.faceRecognitionNet.loadFromUri('/models')
+                ]);
+                setMsg({ type: '', text: "" }); // clear loading msg
 
                 startVideo();
             } catch (err) {
                 console.error("Init failed:", err);
-                setMsg({ type: 'error', text: "Failed to initialize: " + err.message });
+                setMsg({ type: 'error', text: "Failed to load face-api models: " + err.message });
             }
         };
         loadResources();
@@ -92,74 +89,72 @@ function Register() {
     };
 
     const detectLoop = async () => {
-        if (!faceDetectorRef.current || !videoRef.current) return;
+        if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) {
+            detectionFrameRef.current = requestAnimationFrame(detectLoop);
+            return;
+        }
 
-        let startTimeMs = performance.now();
-        if (videoRef.current.currentTime !== lastDetectionTime.current) {
-            lastDetectionTime.current = videoRef.current.currentTime;
+        const detection = await faceapi.detectSingleFace(videoRef.current, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+            .withFaceLandmarks()
+            .withFaceDescriptor();
 
-            const detections = faceDetectorRef.current.detectForVideo(videoRef.current, startTimeMs).detections;
+        // Pass bounding box to React state
+        const displaySize = { width: 640, height: 480 };
 
-            // Draw Bounding Boxes
-            if (canvasRef.current) {
-                const ctx = canvasRef.current.getContext('2d');
-                ctx.clearRect(0, 0, 640, 480);
+        if (canvasRef.current) {
+            const ctx = canvasRef.current.getContext('2d');
+            ctx.clearRect(0, 0, 640, 480);
 
-                // Draw detected faces
-                detections.forEach(detection => {
-                    const { originX, originY, width, height } = detection.boundingBox;
-                    const score = detection.categories[0].score;
+            if (detection) {
+                const resizedDetections = faceapi.resizeResults(detection, displaySize);
+                const box = resizedDetections.detection.box;
+                const score = resizedDetections.detection.score;
+                const isConfident = score > 0.75;
 
-                    // Box styling
-                    ctx.strokeStyle = score > 0.75 ? '#10b981' : '#f59e0b'; // Green if good, Orange if weak
-                    ctx.lineWidth = 3;
-                    ctx.beginPath();
-                    ctx.rect(originX, originY, width, height);
-                    ctx.stroke();
+                ctx.strokeStyle = isConfident ? '#10b981' : '#f59e0b';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(box.x, box.y, box.width, box.height);
 
-                    // Label
-                    ctx.fillStyle = ctx.strokeStyle;
-                    ctx.font = '14px Arial';
-                    ctx.fillText(`Score: ${(score * 100).toFixed(0)}%`, originX, originY - 10);
-                });
-            }
+                ctx.fillStyle = isConfident ? '#10b981' : '#f59e0b';
+                ctx.font = '16px sans-serif';
+                ctx.fillText(`${Math.round(score * 100)}%`, box.x, box.y > 20 ? box.y - 5 : 20);
 
-            // Auto-Capture Logic
-            const currentStatus = stateRef.current.status;
+                // Auto-Capture Logic
+                const currentStatus = stateRef.current.status;
 
-            if (currentStatus === 'DETECTING' && detections.length > 0) {
-                const detection = detections[0];
-                const box = detection.boundingBox;
+                if (currentStatus === 'DETECTING') {
+                    const isCentered = box.x > 100 && (box.x + box.width) < 540;
+                    const isBigEnough = box.width > 120; // Size threshold
 
-                // Criteria
-                const isCentered = box.originX > 100 && (box.originX + box.width) < 540;
-                const isBigEnough = box.width > 140; // Increased requirement for quality
-                const isConfident = detection.categories[0].score > 0.75;
+                    let newGuidance = null;
 
-                let newGuidance = null;
+                    if (!isConfident) {
+                        newGuidance = "Hold Still";
+                    } else if (!isBigEnough) {
+                        newGuidance = "Move Closer";
+                    } else if (!isCentered) {
+                        newGuidance = "Center Your Face";
+                    }
 
-                if (!isConfident) {
-                    newGuidance = "Hold Still";
-                } else if (!isBigEnough) {
-                    newGuidance = "Move Closer";
-                } else if (!isCentered) {
-                    newGuidance = "Center Your Face";
+                    // Update Guidance if changed
+                    if (newGuidance !== stateRef.current.guidance) {
+                        setGuidance(newGuidance);
+                    }
+
+                    if (isCentered && isBigEnough && isConfident) {
+                        capturePhoto(detection.descriptor);
+                    }
                 }
-
-                // Update Guidance if changed
-                if (newGuidance !== stateRef.current.guidance) {
-                    setGuidance(newGuidance);
-                }
-
-                if (isCentered && isBigEnough && isConfident) {
-                    capturePhoto();
-                }
-            } else if (currentStatus === 'DETECTING' && detections.length === 0) {
-                if (stateRef.current.guidance !== "Look at Camera") setGuidance("Look at Camera");
             } else {
-                if (stateRef.current.guidance !== null) setGuidance(null);
+                const currentStatus = stateRef.current.status;
+                if (currentStatus === 'DETECTING') {
+                    if (stateRef.current.guidance !== "Look at Camera") setGuidance("Look at Camera");
+                } else {
+                    if (stateRef.current.guidance !== null) setGuidance(null);
+                }
             }
         }
+
         detectionFrameRef.current = requestAnimationFrame(detectLoop);
     };
 
@@ -171,15 +166,22 @@ function Register() {
         setMsg({ type: 'info', text: "Look at the camera" });
         setPoseStep(0);
         setCaptures([]);
+        setFaceLandmarksPayload(null);
         setStatus('DETECTING');
     };
 
-    const capturePhoto = () => {
+    const capturePhoto = (descriptorVal) => {
         // Prevent double capture
         if (stateRef.current.status === 'CAPTURING') return;
 
         setStatus('CAPTURING');
         setGuidance("Capturing...");
+
+        // Save the first successful descriptor as the faceLandmarks payload
+        if (stateRef.current.poseStep === 0) {
+            // Convert Float32Array to standard array
+            setFaceLandmarksPayload(Array.from(descriptorVal));
+        }
 
         // Size for transfer (smaller = faster)
         const targetWidth = 320;
@@ -206,7 +208,7 @@ function Register() {
                 setTimeout(() => {
                     setStatus('DETECTING');
                     setGuidance(null);
-                }, 5000);
+                }, 4000);
             } else {
                 // Done with step 2
                 setStatus('READY_TO_SUBMIT');
@@ -226,6 +228,10 @@ function Register() {
         data.append('course', formData.course);
         data.append('classIds', JSON.stringify(selectedClasses));
 
+        if (faceLandmarksPayload) {
+            data.append('faceLandmarks', JSON.stringify(faceLandmarksPayload));
+        }
+
         captures.forEach(blob => {
             data.append('images', blob, 'capture.jpg');
         });
@@ -238,6 +244,7 @@ function Register() {
                 setFormData({ name: '', matric_no: '', level: '', department: '', course: '' });
                 setSelectedClasses([]);
                 setCaptures([]);
+                setFaceLandmarksPayload(null);
                 setTimeout(() => setStatus('IDLE'), 3000);
             } else {
                 setStatus('FAIL');
@@ -325,16 +332,16 @@ function Register() {
                 {/* Camera Section */}
                 <div>
                     <div className="video-wrapper" style={{ borderRadius: '20px', overflow: 'hidden', position: 'relative', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.1)' }}>
-                        {initializing && <div style={{ position: 'absolute', inset: 0, background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Initializing Camera...</div>}
+                        {initializing && <div style={{ position: 'absolute', inset: 0, background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Initializing Biometric Sensors...</div>}
 
                         {/* Video Layer */}
-                        <video ref={videoRef} autoPlay muted playsInline style={{ width: '640px', height: '480px', display: 'block', maxWidth: '100%', height: 'auto' }}></video>
+                        <video ref={videoRef} autoPlay muted playsInline style={{ width: '640px', height: 'auto', display: 'block', maxWidth: '100%' }}></video>
 
-                        {/* Bounding Box Overlay Layer */}
-                        <canvas ref={canvasRef} width="640" height="480" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
+                        {/* Canvas Bounding Box Overlay */}
+                        <canvas ref={canvasRef} width="640" height="480" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 5 }} />
 
                         {/* Captures Thumbnails */}
-                        <div style={{ position: 'absolute', bottom: 10, left: 10, right: 10, display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                        <div style={{ position: 'absolute', bottom: 10, left: 10, right: 10, display: 'flex', gap: '10px', justifyContent: 'center', zIndex: 10 }}>
                             {captures.map((blob, i) => (
                                 <div key={i} style={{ width: '60px', height: '60px', borderRadius: '10px', overflow: 'hidden', border: '3px solid var(--primary)', boxShadow: '0 4px 6px rgba(0,0,0,0.2)' }}>
                                     <img src={URL.createObjectURL(blob)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -343,8 +350,8 @@ function Register() {
                         </div>
                         {/* Guidance Overlay */}
                         {guidance && (
-                            <div style={{ position: 'absolute', bottom: '20%', left: '0', right: '0', textAlign: 'center' }}>
-                                <span style={{ background: 'rgba(0,0,0,0.7)', color: 'white', padding: '0.5rem 1.5rem', borderRadius: '30px', fontWeight: 600, backdropFilter: 'blur(4px)' }}>
+                            <div style={{ position: 'absolute', bottom: '20%', left: '0', right: '0', textAlign: 'center', zIndex: 6 }}>
+                                <span style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(10px)', color: 'var(--text-main)', padding: '0.6rem 1.5rem', borderRadius: '30px', fontWeight: 700, fontSize: '1.2rem', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', border: '1px solid var(--border-light)' }}>
                                     {guidance}
                                 </span>
                             </div>
