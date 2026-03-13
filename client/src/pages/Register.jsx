@@ -74,6 +74,7 @@ function Register() {
     const [captures, setCaptures] = useState([]);
     const [faceLandmarksPayload, setFaceLandmarksPayload] = useState(null); // The 128D array
     const [guidance, setGuidance] = useState(null); // Real-time feedback overlay
+    const [cameraError, setCameraError] = useState(false);
 
     // Bounding Box state removed, using Canvas Ref instead
 
@@ -140,7 +141,11 @@ function Register() {
                     };
                 }
             })
-            .catch(err => setMsg({ type: 'error', text: "Camera access denied." }));
+            .catch(err => {
+                console.error("Camera access denied or device missing", err);
+                setMsg({ type: 'error', text: "Camera access denied." });
+                setCameraError(true);
+            });
     };
 
     const detectLoop = async () => {
@@ -436,7 +441,13 @@ function Register() {
                 {/* Camera Section */}
                 <div>
                     <div className="video-wrapper" style={{ borderRadius: '20px', overflow: 'hidden', position: 'relative', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.1)' }}>
-                        {initializing && <div style={{ position: 'absolute', inset: 0, background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Initializing Biometric Sensors...</div>}
+                        {cameraError ? (
+                            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', backdropFilter: 'blur(4px)', zIndex: 10 }}>
+                                <AlertCircle size={48} className="text-danger" style={{ marginBottom: '1rem' }} />
+                                <h3 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Webcam Not Detected</h3>
+                                <p style={{ opacity: 0.8, textAlign: 'center', padding: '0 1rem' }}>Please allow camera permissions or connect a webcam to enroll.</p>
+                            </div>
+                        ) : initializing && <div style={{ position: 'absolute', inset: 0, background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Initializing Biometric Sensors...</div>}
 
                         {/* Video Layer */}
                         <video ref={videoRef} autoPlay muted playsInline style={{ width: '640px', height: 'auto', display: 'block', maxWidth: '100%' }}></video>

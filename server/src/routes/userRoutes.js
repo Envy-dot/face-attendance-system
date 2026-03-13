@@ -71,7 +71,8 @@ router.post('/register', upload.any(), parseFormData, validate(registerSchema), 
                 fs.mkdirSync(uploadDir, { recursive: true });
             }
 
-            const fileName = `user_${matric_no}_${Date.now()}.jpg`;
+            const safeMatric = matric_no ? matric_no.replace(/\//g, '-') : 'unknown';
+            const fileName = `user_${safeMatric}_${Date.now()}.jpg`;
             const filePath = path.join(uploadDir, fileName);
 
             // Write the file
@@ -80,8 +81,8 @@ router.post('/register', upload.any(), parseFormData, validate(registerSchema), 
             // Set the database reference to the relative static URL
             photo = `/uploads/${fileName}`;
         } catch (err) {
-            console.error("Failed to save image to disk:", err);
-            return res.status(500).json({ success: false, error: 'Failed to save student image.' });
+            console.error("WRITE DISK ERROR DETAILS:", err);
+            return res.status(500).json({ success: false, error: `Failed to save student image: ${err.message}` });
         }
     }
 
@@ -102,16 +103,27 @@ router.post('/register', upload.any(), parseFormData, validate(registerSchema), 
     }
 });
 
-// Get all users
+// Get all users (Paginated)
 router.get('/', auth, (req, res) => {
     try {
-        const { search, sort } = req.query;
-        const users = userService.getAllUsers(search, sort);
-        const usersWithDescriptors = users.map(u => ({
+        const { search, sort, page, limit } = req.query;
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 10;
+
+        const result = userService.getAllUsers(search, sort, pageNum, limitNum);
+
+        const usersWithDescriptors = result.data.map(u => ({
             ...u,
             descriptor: JSON.parse(u.descriptor)
         }));
-        res.json(usersWithDescriptors);
+
+        res.json({
+            users: usersWithDescriptors,
+            total: result.total,
+            page: pageNum,
+            limit: limitNum,
+            totalPages: Math.ceil(result.total / limitNum)
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

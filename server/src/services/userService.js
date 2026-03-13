@@ -29,7 +29,7 @@ const registerUser = (user) => {
         // Keep only last 5 descriptors to prevent bloat but maintain accuracy
         if (descriptors.length > 5) descriptors.shift();
 
-        const stmt = db.prepare('UPDATE users SET name = ?, level = ?, department = ?, course = ?, photo = ?, descriptor = ?, section = ? WHERE id = ?');
+        const stmt = db.prepare('UPDATE users SET name = ?, level = ?, department = ?, course = ?, photo = ?, descriptor = ?, section = ?, is_active = 1 WHERE id = ?');
         stmt.run(name, level, department, course, photo, JSON.stringify(descriptors), section, existingUser.id);
         userId = existingUser.id;
     } else {
@@ -56,7 +56,7 @@ const registerUser = (user) => {
     return { userId, created: !existingUser };
 };
 
-const getAllUsers = (search, sort) => {
+const getAllUsers = (search, sort, page = 1, limit = 10) => {
     let query = `
         SELECT u.id, u.name, u.matric_no, u.level, u.department, u.course, u.photo, u.descriptor, u.section, u.is_active,
         strftime('%Y-%m-%dT%H:%M:%SZ', u.created_at) as created_at,
@@ -64,11 +64,15 @@ const getAllUsers = (search, sort) => {
         FROM users u
         LEFT JOIN enrollments e ON u.id = e.user_id
         LEFT JOIN classes c ON e.class_id = c.id
+        WHERE u.is_active = 1
     `;
+    let countQuery = `SELECT COUNT(DISTINCT u.id) as total FROM users u WHERE u.is_active = 1`;
     const params = [];
 
     if (search) {
-        query += ' WHERE u.name LIKE ? OR u.matric_no LIKE ?';
+        const searchClause = ' AND (u.name LIKE ? OR u.matric_no LIKE ?)';
+        query += searchClause;
+        countQuery += searchClause;
         params.push(`%${search}%`, `%${search}%`);
     }
 
@@ -76,13 +80,30 @@ const getAllUsers = (search, sort) => {
 
     if (sort === 'matric') {
         query += ' ORDER BY u.matric_no ASC';
-    } else {
+    } else if (sort === 'name') {
         query += ' ORDER BY u.name ASC';
+    } else {
+        query += ' ORDER BY u.created_at DESC';
     }
 
+    // Pagination
+    const offset = (page - 1) * limit;
+    query += ` LIMIT ? OFFSET ?`;
+
+    const dataParams = [...params, limit, offset];
+
     const stmt = db.prepare(query);
-    return stmt.all(...params);
+    const data = stmt.all(...dataParams);
+
+    const countStmt = db.prepare(countQuery);
+    const totalResult = countStmt.get(...params);
+
+    return {
+        data,
+        total: totalResult ? totalResult.total : 0
+    };
 };
+
 
 const deleteUser = (id) => {
     // Perform Soft Delete

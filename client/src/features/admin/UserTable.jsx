@@ -1,7 +1,7 @@
 import React from 'react';
 import { Trash2, User, IdCard } from 'lucide-react';
 
-function UserTable({ users, onDeleteUser, onUserClick }) {
+function UserTable({ users, onDeleteUser, onUserClick, currentPage, totalPages, onPageChange }) {
     return (
         <div className="table-container" style={{ border: '1px solid var(--border-light)', borderRadius: 'var(--radius-lg)' }}>
             <table>
@@ -18,7 +18,7 @@ function UserTable({ users, onDeleteUser, onUserClick }) {
                 <tbody>
                     {users.filter(u => u.is_active !== 0).map((user, index) => (
                         <tr key={user.id} className="clickable animate-up" onClick={() => onUserClick(user)} style={{ animationDelay: `${index * 0.03}s` }}>
-                            <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>{index + 1}</td>
+                            <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>{(currentPage - 1) * 10 + index + 1}</td>
                             <td>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <IdCard size={16} className="text-primary" />
@@ -64,6 +64,33 @@ function UserTable({ users, onDeleteUser, onUserClick }) {
                     )}
                 </tbody>
             </table>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderTop: '1px solid var(--border-light)', background: 'var(--bg-main)', borderBottomLeftRadius: 'var(--radius-lg)', borderBottomRightRadius: 'var(--radius-lg)' }}>
+                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                        Page {currentPage} of {totalPages}
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                            className="btn btn-secondary"
+                            disabled={currentPage === 1}
+                            onClick={() => onPageChange(currentPage - 1)}
+                            style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                        >
+                            Previous
+                        </button>
+                        <button
+                            className="btn btn-secondary"
+                            disabled={currentPage === totalPages}
+                            onClick={() => onPageChange(currentPage + 1)}
+                            style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', opacity: currentPage === totalPages ? 0.5 : 1, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -7,6 +7,8 @@ const userService = require('../services/userService');
 const db = require('../config/database');
 const multer = require('multer');
 const auth = require('../middleware/auth');
+const validate = require('../middleware/validate');
+const { markAttendanceSchema } = require('../validations/attendanceSchema');
 
 // Configure Multer
 const upload = multer({
@@ -15,7 +17,7 @@ const upload = multer({
 });
 
 // Log attendance (Scan Face)
-router.post('/', upload.any(), async (req, res) => {
+router.post('/', upload.any(), validate(markAttendanceSchema), async (req, res) => {
     // userId is NO LONGER required in body if image is provided
     let { userId, faceLandmarks } = req.body;
 

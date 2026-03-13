@@ -46,8 +46,8 @@ function findMatchingFace(targetDescriptor) {
 
     console.log(`Best match: ${bestMatch.name || 'Unknown'} (Distance: ${bestMatch.distance.toFixed(4)})`);
 
-    // Strict face-api.js threshold of 0.6
-    if (bestMatch.distance < 0.6) {
+    // Stricter face-api.js threshold of 0.45 to prevent false positives
+    if (bestMatch.distance < 0.45) {
         // Convert distance to confidence percentage (e.g. 100 - (distance * 100))
         const confidence = Math.max(0, 100 - (bestMatch.distance * 100));
         return {

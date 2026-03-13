@@ -11,6 +11,7 @@ function Attendance() {
     const [timeLeft, setTimeLeft] = useState(null);
     const [status, setStatus] = useState('IDLE'); // IDLE, SCANNING, VERIFYING, COOLDOWN, EXPIRED
     const [feedback, setFeedback] = useState(null); // { type: 'success'|'error', text: '', name: '' }
+    const [cameraError, setCameraError] = useState(false);
 
     const videoRef = useRef();
     const canvasRef = useRef(); // Bounding Box Overlay
@@ -18,8 +19,11 @@ function Attendance() {
     const cooldownRef = useRef(false);
     const localCooldownCache = useRef({}); // { matricNo: timestamp } for 5 min cache
     const [livenessStage, setLivenessStage] = useState('INIT'); // INIT, CHALLENGE, VERIFYING
-    const [livenessChallenge, setLivenessChallenge] = useState(null); // 'SMILE', 'TURN_LEFT', 'TURN_RIGHT', 'LOOK_UP'
+    const [livenessChallenge, setLivenessChallenge] = useState(null); // 'BLINK', 'SMILE', 'TURN_LEFT', 'TURN_RIGHT'
     const [guidance, setGuidance] = useState(null);
+
+    // Helpers for EAR (Eye Aspect Ratio) calculation
+    const earRef = useRef({ blinkFrames: 0, baselineEAR: 0, consecutiveFrames: 0 });
 
     // Bounding Box state removed, using Canvas Ref instead
 
@@ -86,8 +90,9 @@ function Attendance() {
                 }
             })
             .catch(() => {
-                console.error("Camera denied");
+                console.error("Camera denied or device missing");
                 setInitMsg("Camera access denied.");
+                setCameraError(true);
             });
     };
 
@@ -182,9 +187,8 @@ function Attendance() {
                         } else {
                             // Face is valid, handle liveness
                             if (stage === 'INIT') {
-                                // Select a random challenge
-                                const challenges = ['SMILE', 'TURN_LEFT', 'TURN_RIGHT'];
-                                const selected = challenges[Math.floor(Math.random() * challenges.length)];
+                                // Sustained expressions are much more reliable than fast blinks on webcams
+                                const selected = 'SMILE';
                                 setLivenessChallenge(selected);
                                 setLivenessStage('CHALLENGE');
                                 newGuidance = getChallengeText(selected);
@@ -222,11 +226,23 @@ function Attendance() {
 
     const getChallengeText = (challenge) => {
         switch (challenge) {
+            case 'BLINK': return "Action Required: Please BLINK to verify liveness";
             case 'SMILE': return "Action Required: Smile wide for the camera";
             case 'TURN_LEFT': return "Action Required: Turn your head slightly Left";
             case 'TURN_RIGHT': return "Action Required: Turn your head slightly Right";
             default: return "Hold Still";
         }
+    };
+
+    // Calculate Eye Aspect Ratio
+    const calculateEAR = (eye) => {
+        // Compute Euclidean distances
+        const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
+        const v1 = dist(eye[1], eye[5]);
+        const v2 = dist(eye[2], eye[4]);
+        const h = dist(eye[0], eye[3]);
+        if (h === 0) return 0;
+        return (v1 + v2) / (2.0 * h);
     };
 
     const verifyLiveness = (landmarks, challenge) => {
@@ -265,8 +281,39 @@ function Attendance() {
 
             const mouthWidth = Math.abs(mouthRight.x - mouthLeft.x);
             const mouthHeight = Math.abs(mouthBottom.y - mouthTop.y);
-            // Smiling usually widens the mouth and reduces height relative to width
-            return (mouthWidth / mouthHeight) > 2.5;
+            // Either a wide smile OR opening the mouth widely will count as liveness
+            return (mouthWidth / Math.max(mouthHeight, 1)) > 2.2 || mouthHeight > 18;
+        }
+
+        if (challenge === 'BLINK') {
+            const leftEye = positions.slice(36, 42);
+            const rightEye = positions.slice(42, 48);
+
+            const leftEAR = calculateEAR(leftEye);
+            const rightEAR = calculateEAR(rightEye);
+            const avgEAR = (leftEAR + rightEAR) / 2.0;
+
+            const BLINK_THRESHOLD = 0.25; // Raised from 0.22 to make it easier
+            const BLINK_CONSECUTIVE_FRAMES = 1; // It happens fast
+
+            // Establish baseline to ensure they didn't start with eyes closed
+            if (earRef.current.baselineEAR === 0) {
+                if (avgEAR > 0.27) {
+                    earRef.current.baselineEAR = avgEAR;
+                }
+                return false;
+            }
+
+            if (avgEAR < BLINK_THRESHOLD) {
+                earRef.current.consecutiveFrames += 1;
+            } else {
+                if (earRef.current.consecutiveFrames >= BLINK_CONSECUTIVE_FRAMES) {
+                    earRef.current.blinkFrames += 1;
+                }
+                earRef.current.consecutiveFrames = 0;
+            }
+
+            return earRef.current.blinkFrames > 0;
         }
 
         return false;
@@ -351,9 +398,16 @@ function Attendance() {
                 {/* Camera Feed */}
                 <div style={{ position: 'relative', width: '640px', maxWidth: '100%' }}>
                     <div className="video-wrapper" style={{ borderRadius: '20px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', position: 'relative' }}>
-                        {initializing && <div style={{ position: 'absolute', inset: 0, background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>{initMsg}</div>}
 
-                        {!initializing && !session && (
+                        {cameraError ? (
+                            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', backdropFilter: 'blur(8px)', zIndex: 10 }}>
+                                <CloudOff size={48} className="text-danger" style={{ marginBottom: '1rem' }} />
+                                <h3 style={{ fontSize: '1.8rem', fontWeight: 900 }}>Webcam Not Detected</h3>
+                                <p style={{ opacity: 0.8, fontSize: '1.1rem', textAlign: 'center', padding: '0 1rem' }}>Please allow camera permissions or connect a webcam.</p>
+                            </div>
+                        ) : initializing && <div style={{ position: 'absolute', inset: 0, background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>{initMsg}</div>}
+
+                        {!initializing && !cameraError && !session && (
                             <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', backdropFilter: 'blur(4px)', zIndex: 10 }}>
                                 <AlertCircle size={48} className="text-warning" style={{ marginBottom: '1rem' }} />
                                 <h3 style={{ fontSize: '1.5rem', fontWeight: 700 }}>No Active Session</h3>

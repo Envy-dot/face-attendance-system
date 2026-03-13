@@ -3,3 +3,5 @@ node_modules
 models/
 coverage
 dist
+*.db
+*.sqlite

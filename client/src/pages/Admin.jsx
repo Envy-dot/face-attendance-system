@@ -23,6 +23,10 @@ import ClassManager from '../features/admin/ClassManager';
 
 function Admin() {
     const [users, setUsers] = useState([]);
+    const [userPage, setUserPage] = useState(1);
+    const [userTotalPages, setUserTotalPages] = useState(1);
+    const [userTotalCount, setUserTotalCount] = useState(0);
+
     const [logs, setLogs] = useState([]);
     const [activeSession, setActiveSession] = useState(null);
     const [sessionHistory, setSessionHistory] = useState([]);
@@ -85,10 +89,20 @@ function Admin() {
 
     useEffect(() => {
         fetchActiveSession();
-        if (activeTab === 'users') fetchUsers();
+        if (activeTab === 'users') {
+            setUserPage(1); // reset to page 1 on new search
+            fetchUsers(1, debouncedSearch);
+        }
         if (activeTab === 'logs') fetchLogs();
         if (activeTab === 'sessions') fetchSessionHistory();
     }, [activeTab, debouncedSearch]);
+
+    useEffect(() => {
+        // Fetch users when the page changes explicitly without search debounce triggering it
+        if (activeTab === 'users') {
+            fetchUsers(userPage, debouncedSearch);
+        }
+    }, [userPage]);
 
     const handleLogout = () => {
         if (window.confirm("Securely sign out of administrative panel?")) {
@@ -97,9 +111,33 @@ function Admin() {
         }
     };
 
-    const fetchUsers = async () => {
-        const data = await api.users.getAll(debouncedSearch);
-        setUsers(data);
+    const fetchUsers = async (page = 1, search = '') => {
+        // Build query string manually since we only need simple params
+        const queryParams = new URLSearchParams();
+        if (search) queryParams.append('search', search);
+        queryParams.append('page', page.toString());
+        queryParams.append('limit', '10'); // Default per page
+
+        const response = await fetch(`/api/users?${queryParams.toString()}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            // Since we updated the backend to return an object: { users, total, page, limit, totalPages }
+            if (data && data.users) {
+                setUsers(data.users);
+                setUserTotalPages(data.totalPages);
+                setUserTotalCount(data.total);
+            } else if (Array.isArray(data)) {
+                // Fallback if backend wasn't restarted
+                setUsers(data);
+                setUserTotalPages(1);
+                setUserTotalCount(data.length);
+            }
+        } else {
+            console.error("Failed to fetch users");
+        }
     };
 
     const fetchLogs = async () => {
@@ -185,7 +223,7 @@ function Admin() {
 
     const handleDeleteUser = async (id) => {
         await api.users.delete(id);
-        fetchUsers();
+        fetchUsers(userPage, debouncedSearch);
     };
 
     const handleDeleteLog = async (id) => {
@@ -300,9 +338,16 @@ function Admin() {
                                 <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                                 <input placeholder="Filter live by Name or Matric..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ paddingLeft: '3rem' }} />
                             </div>
-                            <span className="text-secondary" style={{ fontSize: '0.9rem', marginLeft: 'auto' }}>Total: {users.length} Students</span>
+                            <span className="text-secondary" style={{ fontSize: '0.9rem', marginLeft: 'auto' }}>Total: {userTotalCount} Students</span>
                         </div>
-                        <UserTable users={users} onDeleteUser={handleDeleteUser} onUserClick={setSelectedUser} />
+                        <UserTable
+                            users={users}
+                            onDeleteUser={handleDeleteUser}
+                            onUserClick={setSelectedUser}
+                            currentPage={userPage}
+                            totalPages={userTotalPages}
+                            onPageChange={(page) => setUserPage(page)}
+                        />
                     </div>
                 )}
 

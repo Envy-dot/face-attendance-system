@@ -1,10 +1,21 @@
 const Joi = require('joi');
 
 const validate = (schema) => (req, res, next) => {
-    const { error } = schema.validate(req.body);
+    // Only validate the fields specified in the schema, allow other fields to pass through (like files)
+    const { error, value } = schema.validate(req.body, { abortEarly: false, allowUnknown: true });
+
     if (error) {
-        return res.status(400).json({ error: error.details[0].message });
+        // Map Joi error to a cleaner array of strings
+        const errorMessages = error.details.map((detail) => detail.message);
+        return res.status(400).json({
+            success: false,
+            error: 'Validation Failed',
+            details: errorMessages
+        });
     }
+
+    // Replace req.body with validated and type-casted values (if any)
+    req.body = value;
     next();
 };
 
