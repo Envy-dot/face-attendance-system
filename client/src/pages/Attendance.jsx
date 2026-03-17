@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Camera, AlertCircle, Clock, Activity, CloudOff, CheckCircle, UserX, RefreshCw } from 'lucide-react';
+import { Camera, AlertCircle, Clock, Activity, CloudOff, CheckCircle, UserX, RefreshCw, ShieldCheck, Info } from 'lucide-react';
 import { api } from '../api';
 import * as faceapi from 'face-api.js';
 
@@ -12,60 +12,64 @@ function Attendance() {
     const [status, setStatus] = useState('IDLE'); // IDLE, SCANNING, VERIFYING, COOLDOWN, EXPIRED
     const [feedback, setFeedback] = useState(null); // { type: 'success'|'error', text: '', name: '' }
     const [cameraError, setCameraError] = useState(false);
+    const [modelsLoaded, setModelsLoaded] = useState(false);
 
     const videoRef = useRef();
-    const canvasRef = useRef(); // Bounding Box Overlay
+    const canvasRef = useRef(); 
     const detectionFrameRef = useRef(null);
     const cooldownRef = useRef(false);
     const localCooldownCache = useRef({}); // { matricNo: timestamp } for 5 min cache
     const [livenessStage, setLivenessStage] = useState('INIT'); // INIT, CHALLENGE, VERIFYING
-    const [livenessChallenge, setLivenessChallenge] = useState(null); // 'BLINK', 'SMILE', 'TURN_LEFT', 'TURN_RIGHT'
+    const [livenessChallenge, setLivenessChallenge] = useState(null); // 'BLINK'
     const [guidance, setGuidance] = useState(null);
 
-    // Helpers for EAR (Eye Aspect Ratio) calculation
     const earRef = useRef({ blinkFrames: 0, baselineEAR: 0, consecutiveFrames: 0 });
 
-    // Bounding Box state removed, using Canvas Ref instead
-
-    // Refs for Loop Access (Fix Stale Closures)
     const stateRef = useRef({
         status: 'IDLE',
         session: null,
         guidance: null,
         livenessStage: 'INIT',
-        livenessChallenge: null
+        livenessChallenge: null,
+        modelsLoaded: false
     });
 
-    // Sync Refs
     useEffect(() => {
         stateRef.current.status = status;
         stateRef.current.session = session;
         stateRef.current.guidance = guidance;
         stateRef.current.livenessStage = livenessStage;
         stateRef.current.livenessChallenge = livenessChallenge;
-    }, [status, session, guidance, livenessStage, livenessChallenge]);
+        stateRef.current.modelsLoaded = modelsLoaded;
+    }, [status, session, guidance, livenessStage, livenessChallenge, modelsLoaded]);
 
-    // Initial Setup
     useEffect(() => {
         const setup = async () => {
             try {
-                // 1. Get Active Session
-                const activeSession = await api.sessions.getActive();
-                setSession(activeSession);
-
-                // 2. Load Vision Model
-                setInitMsg("Loading AI models... Please wait.");
-                await Promise.all([
-                    faceapi.nets.ssdMobilenetv1.loadFromUri('/models'),
-                    faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
-                    faceapi.nets.faceRecognitionNet.loadFromUri('/models')
+                // Parallelize Session & Model Loading
+                const [sessionData] = await Promise.all([
+                    api.sessions.getActive().catch(e => {
+                        console.error("Session fetch failed", e);
+                        return null;
+                    }),
+                    (async () => {
+                        setInitMsg("Loading AI models...");
+                        await Promise.all([
+                            faceapi.nets.ssdMobilenetv1.loadFromUri('/models'),
+                            faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
+                            faceapi.nets.faceRecognitionNet.loadFromUri('/models')
+                        ]);
+                        setModelsLoaded(true);
+                    })()
                 ]);
-                setInitMsg("Initializing Camera...");
 
+                setSession(sessionData);
+                setInitMsg("Initializing Camera...");
                 startVideo();
             } catch (err) {
                 console.error("Setup error", err);
-                setInitMsg("Failed to load models: " + err.message);
+                setInitMsg("Failed to initialize: " + err.message);
+                setInitializing(false);
             }
         };
         setup();
@@ -84,25 +88,30 @@ function Attendance() {
                     videoRef.current.srcObject = stream;
                     videoRef.current.onloadeddata = () => {
                         setInitializing(false);
-                        setStatus('SCANNING');
+                        if (stateRef.current.session) {
+                            setStatus('SCANNING');
+                        }
                         detectLoop();
                     };
                 }
             })
-            .catch(() => {
-                console.error("Camera denied or device missing");
-                setInitMsg("Camera access denied.");
+            .catch((err) => {
+                console.error("Camera denied", err);
                 setCameraError(true);
+                setInitializing(false);
             });
     };
 
-    // Session Timer & Logs Logic
     useEffect(() => {
         if (session) {
             const fetchLogs = async () => {
                 try {
                     const sessionLogs = await api.attendance.getLogs('', session.id);
-                    setLogs(sessionLogs.map(log => ({ name: log.name, time: new Date(log.timestamp).toLocaleTimeString(), type: log.type })).slice(0, 10));
+                    setLogs(sessionLogs.map(log => ({ 
+                        name: log.name, 
+                        time: new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
+                        type: log.type 
+                    })).slice(0, 8));
                 } catch (error) {
                     console.error("Failed to fetch logs", error);
                 }
@@ -121,18 +130,12 @@ function Attendance() {
                 if (diff <= 0) {
                     setTimeLeft(0);
                     setStatus('EXPIRED');
-                    if (videoRef.current && videoRef.current.srcObject) {
-                        const tracks = videoRef.current.srcObject.getTracks();
-                        tracks.forEach(t => t.stop());
-                    }
                     clearInterval(timer);
                 } else {
                     setTimeLeft(diff);
                 }
             }, 1000);
             return () => clearInterval(timer);
-        } else {
-            setLogs([]);
         }
     }, [session]);
 
@@ -144,38 +147,37 @@ function Attendance() {
             return;
         }
 
-        const detection = await faceapi.detectSingleFace(videoRef.current, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
-            .withFaceLandmarks()
-            .withFaceDescriptor();
+        if (!stateRef.current.modelsLoaded) {
+            detectionFrameRef.current = requestAnimationFrame(detectLoop);
+            return;
+        }
 
-        const displaySize = { width: 640, height: 480 };
+        try {
+            const detection = await faceapi.detectSingleFace(videoRef.current, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+                .withFaceLandmarks()
+                .withFaceDescriptor();
 
-        if (stateRef.current.status !== 'VERIFYING') {
-            if (canvasRef.current) {
+            const displaySize = { width: 640, height: 480 };
+
+            if (canvasRef.current && stateRef.current.status !== 'VERIFYING') {
                 const ctx = canvasRef.current.getContext('2d');
                 ctx.clearRect(0, 0, 640, 480);
 
                 if (detection) {
-                    const resizedDetections = faceapi.resizeResults(detection, displaySize);
-                    const box = resizedDetections.detection.box;
-                    const score = resizedDetections.detection.score;
+                    const resized = faceapi.resizeResults(detection, displaySize);
+                    const { box, score } = resized.detection;
                     const isConfident = score > 0.75;
 
                     ctx.strokeStyle = isConfident ? '#10b981' : '#f59e0b';
                     ctx.lineWidth = 4;
                     ctx.strokeRect(box.x, box.y, box.width, box.height);
 
-                    ctx.fillStyle = isConfident ? '#10b981' : '#f59e0b';
-                    ctx.font = '16px sans-serif';
-                    ctx.fillText(`${Math.round(score * 100)}%`, box.x, box.y > 20 ? box.y - 5 : 20);
-
-                    // Auto-Verify Logic & Liveness Detection
                     const currentStatus = stateRef.current.status;
                     const currentSession = stateRef.current.session;
                     const stage = stateRef.current.livenessStage;
 
                     if (currentStatus === 'SCANNING' && !cooldownRef.current && currentSession) {
-                        const isBigEnough = box.width > 120; // Ensure face is close enough
+                        const isBigEnough = box.width > 120;
                         let newGuidance = null;
 
                         if (!isConfident) {
@@ -185,22 +187,17 @@ function Attendance() {
                             newGuidance = "Move Closer to Camera";
                             if (stage !== 'INIT') setLivenessStage('INIT');
                         } else {
-                            // Face is valid, handle liveness
                             if (stage === 'INIT') {
-                                // Enforce BLINK to require strong liveness validation via Eye Aspect Ratio (EAR)
-                                const selected = 'BLINK';
-                                setLivenessChallenge(selected);
+                                setLivenessChallenge('BLINK');
                                 setLivenessStage('CHALLENGE');
-                                newGuidance = getChallengeText(selected);
+                                newGuidance = "Blink once to verify liveness...";
                             } else if (stage === 'CHALLENGE') {
-                                // Check if user is passing the challenge
-                                const challenge = stateRef.current.livenessChallenge;
-                                newGuidance = getChallengeText(challenge);
-
-                                if (verifyLiveness(detection.landmarks, challenge)) {
+                                if (verifyBlink(detection.landmarks)) {
                                     setLivenessStage('VERIFYING');
-                                    newGuidance = "Hold still for verification...";
+                                    newGuidance = "✅ Verified! Processing...";
                                     triggerVerification(detection.descriptor);
+                                } else {
+                                    newGuidance = "Blink once to verify liveness...";
                                 }
                             }
                         }
@@ -210,113 +207,39 @@ function Attendance() {
                         }
                     }
                 } else {
-                    const currentStatus = stateRef.current.status;
-                    if (currentStatus === 'SCANNING') {
+                    if (stateRef.current.status === 'SCANNING') {
                         if (stateRef.current.guidance !== "Looking for face...") setGuidance("Looking for face...");
                         if (stateRef.current.livenessStage !== 'INIT') setLivenessStage('INIT');
-                    } else {
-                        if (stateRef.current.guidance !== null) setGuidance(null);
                     }
                 }
             }
+        } catch (e) {
+            console.error("Detection error", e);
         }
 
         detectionFrameRef.current = requestAnimationFrame(detectLoop);
     };
 
-    const getChallengeText = (challenge) => {
-        switch (challenge) {
-            case 'BLINK': return "Action Required: Please BLINK to verify liveness";
-            case 'SMILE': return "Action Required: Smile wide for the camera";
-            case 'TURN_LEFT': return "Action Required: Turn your head slightly Left";
-            case 'TURN_RIGHT': return "Action Required: Turn your head slightly Right";
-            default: return "Hold Still";
-        }
-    };
-
-    // Calculate Eye Aspect Ratio
-    const calculateEAR = (eye) => {
-        // Compute Euclidean distances
-        const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
-        const v1 = dist(eye[1], eye[5]);
-        const v2 = dist(eye[2], eye[4]);
-        const h = dist(eye[0], eye[3]);
-        if (h === 0) return 0;
-        return (v1 + v2) / (2.0 * h);
-    };
-
-    const verifyLiveness = (landmarks, challenge) => {
+    const verifyBlink = (landmarks) => {
         const positions = landmarks.positions;
-        if (!positions || positions.length < 68) return false;
+        const calculateEAR = (eye) => {
+            const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
+            return (dist(eye[1], eye[5]) + dist(eye[2], eye[4])) / (2.0 * dist(eye[0], eye[3]));
+        };
 
-        // Basic landmark heuristics
-        // Nose tip: 30
-        // Left jaw: 0-8, Right jaw: 8-16
-        // Mouth outer: 48-59
+        const leftEAR = calculateEAR(positions.slice(36, 42));
+        const rightEAR = calculateEAR(positions.slice(42, 48));
+        const avgEAR = (leftEAR + rightEAR) / 2.0;
 
-        if (challenge === 'TURN_LEFT') {
-            const noseX = positions[30].x;
-            const leftJawX = positions[0].x;
-            const rightJawX = positions[16].x;
-            // Face turned left means nose is closer to the left jaw (from camera perspective)
-            const leftDist = Math.abs(noseX - leftJawX);
-            const rightDist = Math.abs(noseX - rightJawX);
-            return (leftDist / rightDist) < 0.6;
-        }
-
-        if (challenge === 'TURN_RIGHT') {
-            const noseX = positions[30].x;
-            const leftJawX = positions[0].x;
-            const rightJawX = positions[16].x;
-            const leftDist = Math.abs(noseX - leftJawX);
-            const rightDist = Math.abs(noseX - rightJawX);
-            return (rightDist / leftDist) < 0.6;
-        }
-
-        if (challenge === 'SMILE') {
-            const mouthLeft = positions[48];
-            const mouthRight = positions[54];
-            const mouthTop = positions[51];
-            const mouthBottom = positions[57];
-
-            const mouthWidth = Math.abs(mouthRight.x - mouthLeft.x);
-            const mouthHeight = Math.abs(mouthBottom.y - mouthTop.y);
-            // Either a wide smile OR opening the mouth widely will count as liveness
-            return (mouthWidth / Math.max(mouthHeight, 1)) > 2.2 || mouthHeight > 18;
-        }
-
-        if (challenge === 'BLINK') {
-            const leftEye = positions.slice(36, 42);
-            const rightEye = positions.slice(42, 48);
-
-            const leftEAR = calculateEAR(leftEye);
-            const rightEAR = calculateEAR(rightEye);
-            const avgEAR = (leftEAR + rightEAR) / 2.0;
-
-            const BLINK_THRESHOLD = 0.25; // Raised from 0.22 to make it easier
-            const BLINK_CONSECUTIVE_FRAMES = 1; // It happens fast
-
-            // Establish baseline to ensure they didn't start with eyes closed
-            if (earRef.current.baselineEAR === 0) {
-                if (avgEAR > 0.27) {
-                    earRef.current.baselineEAR = avgEAR;
-                }
-                return false;
+        if (avgEAR < 0.25) { 
+            earRef.current.consecutiveFrames += 1;
+        } else {
+            if (earRef.current.consecutiveFrames >= 1) {
+                earRef.current.blinkFrames += 1;
             }
-
-            if (avgEAR < BLINK_THRESHOLD) {
-                earRef.current.consecutiveFrames += 1;
-            } else {
-                if (earRef.current.consecutiveFrames >= BLINK_CONSECUTIVE_FRAMES) {
-                    earRef.current.blinkFrames += 1;
-                }
-                earRef.current.consecutiveFrames = 0;
-            }
-
-            return earRef.current.blinkFrames > 0;
+            earRef.current.consecutiveFrames = 0;
         }
-
-        return false;
+        return earRef.current.blinkFrames > 0;
     };
 
     const triggerVerification = async (descriptorVal) => {
@@ -324,152 +247,192 @@ function Attendance() {
         cooldownRef.current = true;
         setStatus('VERIFYING');
 
-        // Keep detection marking visible instead of clearing it
-        // so the user knows their face was captured
-
-
-        // Size for transfer (smaller = faster)
-        const targetWidth = 320;
-        const targetHeight = 240;
-
         const canvas = document.createElement('canvas');
-        canvas.width = targetWidth;
-        canvas.height = targetHeight;
+        canvas.width = 320;
+        canvas.height = 240;
         const ctx = canvas.getContext('2d');
-
-        // Draw resized version
-        ctx.drawImage(videoRef.current, 0, 0, targetWidth, targetHeight);
+        ctx.drawImage(videoRef.current, 0, 0, 320, 240);
 
         canvas.toBlob(async (blob) => {
             const formData = new FormData();
             formData.append('image', blob, 'scan.jpg');
-
-            // Send descriptor to the backend for comparison
             formData.append('faceLandmarks', JSON.stringify(Array.from(descriptorVal)));
+            formData.append('sessionId', session.id);
 
             try {
                 const res = await api.attendance.log(formData);
                 if (res.success) {
-                    const name = res.user ? res.user.name : "Verified";
-                    const matricNo = res.user ? res.user.matric_no : "VERIFIED";
-
-                    // Duplicate Cooldown Prevention
-                    const now = Date.now();
-                    const cacheTime = localCooldownCache.current[matricNo];
-
-                    if (cacheTime && (now - cacheTime < 5 * 60 * 1000) || res.duplicate) {
+                    const name = res.user?.name || "Verified";
+                    const matricNo = res.user?.matric_no || "VERIFIED";
+                    
+                    if (res.duplicate) {
                         setFeedback({ type: 'success', name, text: "Already Marked Present" });
-                        localCooldownCache.current[matricNo] = now; // reset timer
                     } else {
-                        setFeedback({ type: 'success', name, text: "Attendance Marked" });
-                        setLogs(prev => [{ name, time: new Date().toLocaleTimeString(), type: 'in' }, ...prev].slice(0, 10));
-                        localCooldownCache.current[matricNo] = now;
+                        setFeedback({ type: 'success', name, text: "Attendance Marked ✅" });
+                        setLogs(prev => [{ name, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), type: 'in' }, ...prev].slice(0, 8));
                     }
                 } else {
-                    setFeedback({ type: 'error', name: 'Unknown', text: res.error || "Face not recognized" });
+                    setFeedback({ type: 'error', name: 'Denied', text: res.error || "Identity Mismatch" });
                 }
-            } catch {
-                setFeedback({ type: 'error', text: "Network Error" });
+            } catch (err) {
+                setFeedback({ type: 'error', text: "Network Timeout" });
             } finally {
                 setTimeout(() => {
                     setFeedback(null);
                     setLivenessStage('INIT');
                     setStatus('SCANNING');
                     cooldownRef.current = false;
-                }, 2000);
+                    earRef.current.blinkFrames = 0;
+                }, 3000);
             }
         }, 'image/jpeg', 0.8);
     };
 
+    const formatTime = (ms) => {
+        if (!ms) return "00:00";
+        const mins = Math.floor(ms / 60000);
+        const secs = Math.floor((ms % 60000) / 1000);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
     return (
-        <div className="page-container animate-fade">
-            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                <h2 style={{ fontSize: '2rem', fontWeight: 900 }}>Identity Verification</h2>
+        <div className="min-h-screen animate-fade flex flex-col items-center justify-center p-4 py-12">
+            <div className="text-center mb-8">
+                <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">Identity Verification</h2>
                 {session && (
-                    <div className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '0.5rem 1rem', marginTop: '0.5rem' }}>
-                        <div style={{ width: '8px', height: '8px', background: 'var(--success)', borderRadius: '50%', animation: 'pulse 1s infinite' }} />
-                        {session.name} {timeLeft !== null && `(${Math.floor(timeLeft / 60000)}m left)`}
+                    <div className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 shadow-sm animate-up">
+                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                        <span className="font-bold text-sm uppercase tracking-wider">{session.name}</span>
+                        {timeLeft !== null && (
+                            <span className="ml-2 font-mono bg-white px-2 py-0.5 rounded border border-emerald-100 text-xs shadow-inner">
+                                {formatTime(timeLeft)}
+                            </span>
+                        )}
                     </div>
                 )}
             </div>
 
-            <div style={{ display: 'flex', gap: '2rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-
-                {/* Camera Feed */}
-                <div style={{ position: 'relative', width: '640px', maxWidth: '100%' }}>
-                    <div className="video-wrapper" style={{ borderRadius: '20px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', position: 'relative' }}>
-
+            <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
+                
+                {/* Scanner Section */}
+                <div className="flex flex-col gap-4">
+                    <div className="w-full aspect-[4/3] rounded-3xl overflow-hidden relative shadow-2xl bg-slate-900 border-4 border-white/60 backdrop-blur-xl">
+                        
                         {cameraError ? (
-                            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', backdropFilter: 'blur(8px)', zIndex: 10 }}>
-                                <CloudOff size={48} className="text-danger" style={{ marginBottom: '1rem' }} />
-                                <h3 style={{ fontSize: '1.8rem', fontWeight: 900 }}>Webcam Not Detected</h3>
-                                <p style={{ opacity: 0.8, fontSize: '1.1rem', textAlign: 'center', padding: '0 1rem' }}>Please allow camera permissions or connect a webcam.</p>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md text-white p-8 text-center z-30">
+                                <CloudOff size={48} className="text-red-400 mb-4" />
+                                <h3 className="text-2xl font-bold">Webcam Not Detected</h3>
+                                <p className="text-slate-400 mt-2">Please ensure camera permissions are granted and the device is connected.</p>
+                                <button onClick={() => window.location.reload()} className="mt-6 px-6 py-2 bg-white text-slate-900 rounded-full font-bold hover:bg-slate-100 transition-colors">
+                                    Try Reconnecting
+                                </button>
                             </div>
-                        ) : initializing && <div style={{ position: 'absolute', inset: 0, background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>{initMsg}</div>}
-
-                        {!initializing && !cameraError && !session && (
-                            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', backdropFilter: 'blur(4px)', zIndex: 10 }}>
-                                <AlertCircle size={48} className="text-warning" style={{ marginBottom: '1rem' }} />
-                                <h3 style={{ fontSize: '1.5rem', fontWeight: 700 }}>No Active Session</h3>
-                                <p style={{ opacity: 0.8 }}>Your lecturer has not started a session.</p>
+                        ) : initializing ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-white z-20">
+                                <RefreshCw className="animate-spin mb-4 text-primary" size={40} />
+                                <div className="font-bold text-lg tracking-wide">{initMsg}</div>
                             </div>
-                        )}
-
-                        {status === 'EXPIRED' && (
-                            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', backdropFilter: 'blur(8px)', zIndex: 10 }}>
-                                <Clock size={48} className="text-danger" style={{ marginBottom: '1rem' }} />
-                                <h3 style={{ fontSize: '1.8rem', fontWeight: 900 }}>Session Expired</h3>
-                                <p style={{ opacity: 0.8, fontSize: '1.1rem' }}>Time is up! No further attendance can be marked.</p>
+                        ) : !session ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm text-white p-8 text-center z-10">
+                                <AlertCircle size={48} className="text-amber-400 mb-4" />
+                                <h3 className="text-2xl font-bold">No Active Training</h3>
+                                <p className="text-slate-400 mt-2">Attendance sessions must be initialized by a lecturer via the admin panel.</p>
                             </div>
-                        )}
+                        ) : status === 'EXPIRED' ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md text-white p-8 text-center z-10">
+                                <Clock size={48} className="text-red-400 mb-4" />
+                                <h3 className="text-2xl font-bold">Session Finalized</h3>
+                                <p className="text-slate-400 mt-2">The allowed time for this verification window has elapsed.</p>
+                            </div>
+                        ) : null}
 
-                        <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', display: 'block' }}></video>
-                        <canvas ref={canvasRef} width="640" height="480" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 5 }} />
+                        <video 
+                            ref={videoRef} 
+                            autoPlay 
+                            muted 
+                            playsInline 
+                            className={`w-full h-full object-cover transition-opacity duration-500 ${initializing || cameraError ? 'opacity-0' : 'opacity-100'}`}
+                        />
+                        <canvas 
+                            ref={canvasRef} 
+                            width="640" 
+                            height="480" 
+                            className="absolute inset-0 w-full h-full pointer-events-none z-10" 
+                        />
 
-                        {/* Guidance Overlay */}
+                        {/* Guidance Toast */}
                         {guidance && status === 'SCANNING' && (
-                            <div style={{ position: 'absolute', bottom: '15%', left: '0', right: '0', textAlign: 'center', zIndex: 6 }}>
-                                <span style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(10px)', color: 'var(--text-main)', padding: '0.6rem 1.5rem', borderRadius: '30px', fontWeight: 700, fontSize: '1.2rem', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', border: '1px solid var(--border-light)' }}>
+                            <div className="absolute bottom-10 left-0 right-0 px-6 z-20 flex justify-center">
+                                <div className="bg-white/90 backdrop-blur-xl border border-white shadow-2xl text-slate-900 px-6 py-3 rounded-full font-extrabold text-sm md:text-base flex items-center gap-3 animate-up">
+                                    {guidance.includes("Blink") && <span className="w-3 h-3 bg-amber-500 rounded-full animate-pulse" />}
                                     {guidance}
-                                </span>
+                                </div>
                             </div>
                         )}
 
+                        {/* Verification Layer */}
                         {status === 'VERIFYING' && (
-                            <div style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: '1.1rem', fontWeight: 800, padding: '0.5rem 1.2rem', borderRadius: '30px', boxShadow: '0 4px 15px rgba(37,99,235,0.2)', zIndex: 10 }}>
-                                <Activity className="spin" size={20} style={{ marginRight: '8px' }} /> Verifying...
+                            <div className="absolute top-6 right-6 z-20">
+                                <div className="bg-primary/90 backdrop-blur-lg text-white px-5 py-2.5 rounded-2xl font-bold shadow-lg flex items-center gap-3 border border-white/20">
+                                    <Activity className="animate-pulse" size={20} />
+                                    <span>Syncing Identity...</span>
+                                </div>
                             </div>
                         )}
 
-                        {/* New Glassmorphism Toast Feedback Overlay replacing the old alerts */}
+                        {/* Success/Error Overlay */}
                         {feedback && (
-                            <div className="animate-up" style={{ position: 'absolute', top: '5%', left: '50%', transform: 'translateX(-50%)', background: feedback.type === 'success' ? 'rgba(220, 252, 231, 0.90)' : 'rgba(254, 226, 226, 0.90)', backdropFilter: 'blur(12px)', border: `1px solid ${feedback.type === 'success' ? 'rgba(22, 101, 52, 0.2)' : 'rgba(153, 27, 27, 0.2)'}`, display: 'flex', alignItems: 'center', gap: '15px', color: feedback.type === 'success' ? '#166534' : '#991b1b', padding: '1.2rem 2.5rem', borderRadius: '50px', boxShadow: `0 10px 30px ${feedback.type === 'success' ? 'rgba(22, 101, 52, 0.2)' : 'rgba(153, 27, 27, 0.2)'}`, zIndex: 20 }}>
-                                {feedback.type === 'success' ? <CheckCircle size={28} /> : <UserX size={28} />}
-                                <div style={{ textAlign: 'left' }}>
-                                    <div style={{ fontSize: '1.1rem', fontWeight: 800 }}>{feedback.name || 'Notice'}</div>
-                                    <div style={{ fontSize: '0.95rem', fontWeight: 500 }}>{feedback.text}</div>
+                            <div className="absolute inset-0 flex items-center justify-center p-6 z-40 bg-white/10 backdrop-blur-[2px]">
+                                <div className={`animate-up max-w-sm w-full p-8 rounded-[2.5rem] shadow-2xl text-center border-4 ${
+                                    feedback.type === 'success' ? 'bg-emerald-50/95 border-emerald-500/30 text-emerald-900' : 'bg-red-50/95 border-red-500/30 text-red-900'
+                                }`}>
+                                    <div className={`mx-auto w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-xl ${
+                                        feedback.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'
+                                    }`}>
+                                        {feedback.type === 'success' ? <ShieldCheck size={40} /> : <UserX size={40} />}
+                                    </div>
+                                    <h4 className="text-2xl font-black mb-1">{feedback.name}</h4>
+                                    <p className="font-bold opacity-80">{feedback.text}</p>
                                 </div>
                             </div>
                         )}
                     </div>
-                    <div style={{ textAlign: 'center', marginTop: '1rem', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
-                        {!session ? "System Idle" : (status === 'SCANNING' ? "Looking for faces..." : "Processing...")}
+                </div>
+
+                {/* Sidebar Logs */}
+                <div className="flex flex-col gap-6">
+                    <div className="bg-white/70 backdrop-blur-xl border border-white/40 rounded-3xl shadow-xl overflow-hidden flex flex-col h-full max-h-[600px]">
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white/40">
+                            <h3 className="font-black text-slate-800 tracking-tight uppercase text-sm">Real-time Feed</h3>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 text-primary rounded-lg">
+                                <Activity size={12} />
+                                <span className="text-[10px] font-black uppercase">Live</span>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                            {logs.length > 0 ? logs.map((log, i) => (
+                                <div key={i} className="group p-4 bg-white/50 border border-white rounded-2xl flex items-center justify-between hover:bg-white hover:shadow-md transition-all animate-up">
+                                    <div className="flex flex-col">
+                                        <span className="font-bold text-slate-900 text-sm group-hover:text-primary transition-colors">{log.name}</span>
+                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{log.type === 'in' ? 'Check-In' : 'Check-Out'}</span>
+                                    </div>
+                                    <div className="text-[11px] font-black text-slate-500 bg-slate-100/50 px-2 py-1 rounded-md">
+                                        {log.time}
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="h-full flex flex-col items-center justify-center text-slate-400 p-8 text-center translate-y-[-20px]">
+                                    <Info className="mb-3 opacity-20" size={40} />
+                                    <p className="text-xs font-bold uppercase tracking-widest">Awaiting Verification Sequences</p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-4 bg-slate-50/50 border-t border-slate-100 text-center">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-60">Identity Management Node v2.0</p>
+                        </div>
                     </div>
                 </div>
 
-                {/* Logs */}
-                <div className="card" style={{ width: '350px', height: '520px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)', fontWeight: 700 }}>Recent Scans</div>
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
-                        {logs.map((log, i) => (
-                            <div key={i} className="animate-up" style={{ padding: '0.75rem', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between' }}>
-                                <span style={{ fontWeight: 600 }}>{log.name}</span>
-                                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{log.time}</span>
-                            </div>
-                        ))}
-                        {logs.length === 0 && <div style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '2rem' }}>No recent scans</div>}
-                    </div>
-                </div>
             </div>
         </div>
     );
