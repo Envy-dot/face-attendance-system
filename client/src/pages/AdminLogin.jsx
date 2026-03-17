@@ -17,15 +17,22 @@ function AdminLogin() {
 
         try {
             const result = await api.admin.login({ username, password });
-            if (result.success) {
+            
+            // On Render, if VITE_API_URL is missing, it fetches index.html and fails to parse JSON, returning undefined or throwing
+            if (result && result.success) {
                 localStorage.setItem('adminToken', result.token);
                 localStorage.setItem('isAdmin', 'true');
                 navigate('/admin');
             } else {
-                setError(result.error || 'Authentication denied.');
+                setError(result?.error || 'Authentication denied. Check credentials.');
             }
         } catch (err) {
-            setError('System offline or unreachable.');
+             // Most likely a 404 falling back to a frontend HTML page due to missing API URL
+            if (err.message.includes('Unexpected token') || err.message.includes('JSON')) {
+                setError('API Unreachable: Missing VITE_API_URL environment variable.');
+            } else {
+                setError('System offline or unreachable. Please check your connection.');
+            }
         } finally {
             setLoading(false);
         }

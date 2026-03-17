@@ -9,7 +9,7 @@ function Attendance() {
     const [logs, setLogs] = useState([]);
     const [session, setSession] = useState(null);
     const [timeLeft, setTimeLeft] = useState(null);
-    const [status, setStatus] = useState('IDLE'); // IDLE, SCANNING, VERIFYING, COOLDOWN, EXPIRED
+    const [status, setStatus] = useState('UNINITIALIZED'); // UNINITIALIZED, STARTING, IDLE, SCANNING, VERIFYING, COOLDOWN, EXPIRED
     const [feedback, setFeedback] = useState(null); // { type: 'success'|'error', text: '', name: '' }
     const [cameraError, setCameraError] = useState(false);
     const [modelsLoaded, setModelsLoaded] = useState(false);
@@ -26,7 +26,7 @@ function Attendance() {
     const earRef = useRef({ blinkFrames: 0, baselineEAR: 0, consecutiveFrames: 0 });
 
     const stateRef = useRef({
-        status: 'IDLE',
+        status: 'UNINITIALIZED',
         session: null,
         guidance: null,
         livenessStage: 'INIT',
@@ -46,14 +46,14 @@ function Attendance() {
     useEffect(() => {
         const setup = async () => {
             try {
-                // Parallelize Session & Model Loading
+                // Initialize Session & Models but DO NOT start camera automatically
+                setInitMsg("Loading AI models & Fetching Active Session...");
                 const [sessionData] = await Promise.all([
                     api.sessions.getActive().catch(e => {
                         console.error("Session fetch failed", e);
                         return null;
                     }),
                     (async () => {
-                        setInitMsg("Loading AI models...");
                         await Promise.all([
                             faceapi.nets.ssdMobilenetv1.loadFromUri('/models'),
                             faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
@@ -64,11 +64,11 @@ function Attendance() {
                 ]);
 
                 setSession(sessionData);
-                setInitMsg("Initializing Camera...");
-                startVideo();
+                setInitMsg("Ready. Click 'Start Scanner'.");
+                setInitializing(false);
             } catch (err) {
                 console.error("Setup error", err);
-                setInitMsg("Failed to initialize: " + err.message);
+                setInitMsg("Failed to initialize models/session: " + err.message);
                 setInitializing(false);
             }
         };
@@ -82,14 +82,16 @@ function Attendance() {
     }, []);
 
     const startVideo = () => {
+        setStatus('STARTING');
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
             .then(stream => {
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream;
                     videoRef.current.onloadeddata = () => {
-                        setInitializing(false);
                         if (stateRef.current.session) {
                             setStatus('SCANNING');
+                        } else {
+                            setStatus('IDLE');
                         }
                         detectLoop();
                     };
@@ -98,7 +100,7 @@ function Attendance() {
             .catch((err) => {
                 console.error("Camera denied", err);
                 setCameraError(true);
-                setInitializing(false);
+                setStatus('UNINITIALIZED');
             });
     };
 
@@ -332,7 +334,24 @@ function Attendance() {
                                 <RefreshCw className="animate-spin mb-4 text-primary" size={40} />
                                 <div className="font-bold text-lg tracking-wide">{initMsg}</div>
                             </div>
-                        ) : !session ? (
+                        ) : status === 'UNINITIALIZED' ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-white z-20">
+                                <Camera className="mb-4 text-emerald-400" size={48} />
+                                <h3 className="text-2xl font-bold">Ready to Scan</h3>
+                                <p className="text-slate-400 mt-2 mb-6">Camera auto-start is disabled on your device.</p>
+                                <button 
+                                    onClick={startVideo} 
+                                    className="px-8 py-3 bg-emerald-500 text-white rounded-full font-bold shadow-lg shadow-emerald-500/30 hover:bg-emerald-600 transition-all active:scale-[0.98]"
+                                >
+                                    Start Scanner
+                                </button>
+                            </div>
+                        ) : status === 'STARTING' ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-white z-20">
+                                <RefreshCw className="animate-spin mb-4 text-emerald-400" size={40} />
+                                <div className="font-bold text-lg tracking-wide">Accessing Camera...</div>
+                            </div>
+                        ) : !session && status !== 'UNINITIALIZED' ? (
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm text-white p-8 text-center z-10">
                                 <AlertCircle size={48} className="text-amber-400 mb-4" />
                                 <h3 className="text-2xl font-bold">No Active Training</h3>
@@ -351,7 +370,7 @@ function Attendance() {
                             autoPlay 
                             muted 
                             playsInline 
-                            className={`w-full h-full object-cover transition-opacity duration-500 ${initializing || cameraError ? 'opacity-0' : 'opacity-100'}`}
+                            className={`w-full h-full object-cover transition-opacity duration-500 ${initializing || cameraError || status === 'UNINITIALIZED' || status === 'STARTING' ? 'opacity-0' : 'opacity-100'}`}
                         />
                         <canvas 
                             ref={canvasRef} 

@@ -21,7 +21,7 @@ function AttendanceLogs({ logs, onDeleteLog }) {
                             <td>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     {log.photo && (
-                                        <img src={`http://localhost:3001${log.photo}`} alt="Student Profile" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border-light)' }} />
+                                        <img src={log.photo.startsWith('http') ? log.photo : `${import.meta.env.VITE_API_URL || '/api'}${log.photo.replace(/^\/api/, '')}`} alt="Student Profile" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border-light)' }} />
                                     )}
                                     <div>
                                         <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '1rem' }}>{log.name}</div>
