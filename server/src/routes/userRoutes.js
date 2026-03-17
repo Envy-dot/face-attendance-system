@@ -5,10 +5,7 @@ const validate = require('../middleware/validate');
 const { registerSchema } = require('../validations/userSchema');
 const multer = require('multer');
 const faceService = require('../services/faceService');
-const fs = require('fs');
-const path = require('path');
 const auth = require('../middleware/auth');
-const cloudinary = require('cloudinary').v2;
 
 // Configure Cloudinary using Environment Variable 
 // (Ensure CLOUDINARY_URL is set in .env)
@@ -61,20 +58,6 @@ router.post('/register', upload.any(), parseFormData, validate(registerSchema), 
     // fallback if no image/descriptor
     if (!descriptor || !photo) {
         return res.status(400).json({ success: false, error: 'Both a Photo and a valid Biometric Descriptor are strictly required' });
-    }
-
-    // Handle incoming base64 photo for Cloudinary Upload
-    if (photo && photo.startsWith('data:image')) {
-        try {
-            const uploadResponse = await cloudinary.uploader.upload(photo, {
-                folder: "face-attendance/users",
-                resource_type: "image",
-            });
-            photo = uploadResponse.secure_url;
-        } catch (err) {
-            console.error("CLOUDINARY UPLOAD ERROR DETAILS:", err);
-            return res.status(500).json({ success: false, error: `Failed to upload student image to cloud: ${err.message}` });
-        }
     }
 
     try {

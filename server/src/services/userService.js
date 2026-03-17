@@ -1,7 +1,22 @@
 const pool = require('../config/database');
+const cloudinary = require('../config/cloudinary');
 
 const registerUser = async (user) => {
-    const { name, matric_no, level, department, course, photo, descriptor, section, classIds } = user;
+    let { name, matric_no, level, department, course, photo, descriptor, section, classIds } = user;
+
+    // Handle Cloudinary Upload for Base64 photo
+    if (photo && photo.startsWith('data:image')) {
+        try {
+            const uploadResponse = await cloudinary.uploader.upload(photo, {
+                folder: 'student_faces',
+                resource_type: 'image'
+            });
+            photo = uploadResponse.secure_url;
+        } catch (err) {
+            console.error("Cloudinary upload failed in service:", err);
+            throw new Error(`Failed to upload student image: ${err.message}`);
+        }
+    }
 
     // Check if user already exists by matric_no
     const { rows: existingUsers } = await pool.query('SELECT id, descriptor FROM users WHERE matric_no = $1', [matric_no]);
