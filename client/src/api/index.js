@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const BASE_URL = '/api';
 
 // Helper function to handle authorized fetch requests
 const apiFetch = async (url, options = {}) => {

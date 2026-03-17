@@ -44,15 +44,15 @@ app.use(bodyParser.json({ limit: '50mb' }));
 // Static file serving for uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Serve built React frontend
-app.use(express.static(path.join(__dirname, '../client/dist')));
-
-// Routes
+// API Routes
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/classes', require('./src/routes/classRoutes'));
+
+// Serve built React frontend (MUST be after API routes)
+app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // Global Error Handler
 app.use((err, req, res, next) => {
