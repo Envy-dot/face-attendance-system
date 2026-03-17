@@ -12,12 +12,26 @@ const adminRoutes = require('./src/routes/adminRoutes');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-const allowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173', 'https://face-attendance-system-prod.com'];
+const allowedOrigins = [
+    'http://localhost:5173', 
+    'http://127.0.0.1:5173', 
+    'http://localhost:3000',
+    'https://face-attendance-system-prod.com'
+];
+
 app.use(cors({
     origin: function (origin, callback) {
         // allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) === -1) {
+        
+        // Match localhost or Render.com domains
+        const isAllowed = allowedOrigins.indexOf(origin) !== -1 || 
+                          origin.endsWith('.onrender.com') ||
+                          origin.includes('localhost:') ||
+                          origin.includes('127.0.0.1:');
+
+        if (!isAllowed) {
+            console.log(`[CORS Blocked] Origin: ${origin}`);
             var msg = 'The CORS policy for this site does not allow access from the specified Origin.';
             return callback(new Error(msg), false);
         }

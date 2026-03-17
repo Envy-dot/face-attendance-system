@@ -47,7 +47,7 @@ router.post('/', upload.any(), validate(markAttendanceSchema), async (req, res) 
         }
         userId = recognizedUserId;
 
-        const activeSession = sessionService.getActiveSession();
+        const activeSession = await sessionService.getActiveSession();
 
         if (!activeSession) {
             return res.status(403).json({ error: 'No active session. Please wait for lecturer to start a session.' });
@@ -58,28 +58,25 @@ router.post('/', upload.any(), validate(markAttendanceSchema), async (req, res) 
 
         // Class Enrollment Restriction
         if (activeSession.class_id) {
-            const isEnrolled = db.prepare('SELECT 1 FROM enrollments WHERE user_id = ? AND class_id = ?').get(userId, activeSession.class_id);
-            if (!isEnrolled) {
+            const { rows: enrollResult } = await db.query('SELECT 1 FROM enrollments WHERE user_id = $1 AND class_id = $2', [userId, activeSession.class_id]);
+            if (enrollResult.length === 0) {
                 return res.status(403).json({ error: 'You are not enrolled in this class session' });
             }
         }
 
         // Duplicate check
-        if (attendanceService.checkDuplicate(userId, sessionId, sessionMode)) {
-            const user = db.prepare('SELECT name, matric_no FROM users WHERE id = ?').get(userId);
-            return res.status(200).json({ success: true, duplicate: true, user, message: 'Already marked for this session' });
+        const isDuplicate = await attendanceService.checkDuplicate(userId, sessionId, sessionMode);
+        if (isDuplicate) {
+            const { rows: userRows } = await db.query('SELECT name, matric_no FROM users WHERE id = $1', [userId]);
+            return res.status(200).json({ success: true, duplicate: true, user: userRows[0], message: 'Already marked for this session' });
         }
 
-        // We can save the scanned image if we want audit trails.
-        // For now, pass 'null' or a placeholder if we don't save the file to disk.
-        // current DB schema has 'image' column (TEXT?). 
-        // We will skip saving the actual image blob to DB to save space, unless required.
-        const entryId = attendanceService.logAttendance(userId, sessionId, sessionMode, null);
+        const entryId = await attendanceService.logAttendance(userId, sessionId, sessionMode, null);
 
         // Fetch user details to return
-        const user = db.prepare('SELECT name, matric_no FROM users WHERE id = ?').get(userId);
+        const { rows: userRows } = await db.query('SELECT name, matric_no FROM users WHERE id = $1', [userId]);
 
-        res.json({ success: true, entryId, session: activeSession, user });
+        res.json({ success: true, entryId, session: activeSession, user: userRows[0] });
     } catch (err) {
         console.error("Attendance error:", err);
         res.status(500).json({ error: err.message });
@@ -87,21 +84,21 @@ router.post('/', upload.any(), validate(markAttendanceSchema), async (req, res) 
 });
 
 // Get attendance logs
-router.get('/', auth, (req, res) => {
+router.get('/', auth, async (req, res) => {
     try {
         const { search, sessionId } = req.query;
-        const logs = attendanceService.getAttendanceLogs(search, sessionId);
+        const logs = await attendanceService.getAttendanceLogs(search, sessionId);
         res.json(logs);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-router.delete('/bulk', auth, (req, res) => {
+router.delete('/bulk', auth, async (req, res) => {
     const { date } = req.body;
     try {
         if (date) {
-            attendanceService.deleteAttendanceByDate(date);
+            await attendanceService.deleteAttendanceByDate(date);
             res.json({ success: true });
         } else {
             res.status(400).json({ error: 'Date is required' });
@@ -111,9 +108,9 @@ router.delete('/bulk', auth, (req, res) => {
     }
 });
 
-router.delete('/:id', auth, (req, res) => {
+router.delete('/:id', auth, async (req, res) => {
     try {
-        attendanceService.deleteAttendance(req.params.id);
+        await attendanceService.deleteAttendance(req.params.id);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -121,12 +118,12 @@ router.delete('/:id', auth, (req, res) => {
 });
 
 // Export Matrix Excel
-router.get('/export-matrix', auth, (req, res) => {
+router.get('/export-matrix', auth, async (req, res) => {
     try {
         const { sessionName, classId } = req.query;
 
         if (classId) {
-            const result = attendanceService.getAttendanceMatrix(classId);
+            const result = await attendanceService.getAttendanceMatrix(classId);
             const { sessions, data } = result;
 
             if (sessions.length === 0) return res.status(404).json({ error: 'No sessions found for this class' });
@@ -158,8 +155,8 @@ router.get('/export-matrix', auth, (req, res) => {
 
         if (!sessionName) return res.status(400).json({ error: 'sessionName or classId is required' });
 
-        const users = db.prepare('SELECT id, matric_no, name, department, course FROM users WHERE is_active = 1 ORDER BY name ASC').all();
-        const sessions = db.prepare('SELECT id, date(start_time) as date FROM sessions WHERE name = ? ORDER BY start_time ASC').all(sessionName);
+        const { rows: users } = await db.query('SELECT id, matric_no, name, department, course FROM users WHERE is_active = 1 ORDER BY name ASC');
+        const { rows: sessions } = await db.query('SELECT id, to_char(start_time, \'YYYY-MM-DD\') as date FROM sessions WHERE name = $1 ORDER BY start_time ASC', [sessionName]);
 
         if (sessions.length === 0) return res.status(404).json({ error: 'No sessions found with this name' });
 
@@ -170,8 +167,8 @@ router.get('/export-matrix', auth, (req, res) => {
         });
 
         const sessionIds = sessions.map(s => s.id);
-        const placeholders = sessionIds.map(() => '?').join(',');
-        const attendance = db.prepare(`SELECT user_id, session_id FROM attendance WHERE session_id IN (${placeholders})`).all(...sessionIds);
+        const placeholders = sessionIds.map((_, i) => `$${i + 1}`).join(',');
+        const { rows: attendance } = await db.query(`SELECT user_id, session_id FROM attendance WHERE session_id IN (${placeholders})`, sessionIds);
 
         const matrixData = users.map(user => {
             const row = {

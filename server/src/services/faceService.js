@@ -19,8 +19,8 @@ function euclideanDistance(desc1, desc2) {
  * @param {number[]} targetDescriptor - The 128D descriptor array from the frontend
  * @returns {Object|null} - The matched user ID and confidence, or null if no match
  */
-function findMatchingFace(targetDescriptor) {
-    const users = db.prepare('SELECT id, name, descriptor FROM users').all();
+async function findMatchingFace(targetDescriptor) {
+    const { rows: users } = await db.query('SELECT id, name, descriptor FROM users WHERE is_active = 1');
 
     let bestMatch = { userId: null, distance: Infinity, name: null };
 
@@ -29,7 +29,7 @@ function findMatchingFace(targetDescriptor) {
 
         let storedDescriptors = [];
         try {
-            const parsed = JSON.parse(user.descriptor);
+            const parsed = typeof user.descriptor === 'string' ? JSON.parse(user.descriptor) : user.descriptor;
             // Support both [] and [[]] formats
             storedDescriptors = Array.isArray(parsed[0]) ? parsed : [parsed];
         } catch (e) {
