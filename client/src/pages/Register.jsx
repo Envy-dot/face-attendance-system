@@ -358,13 +358,13 @@ function Register() {
     return (
         <div className="page-container animate-fade">
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '2.5rem', fontWeight: 900 }}>Biometric Enrollment</h2>
+                <h2 className="responsive-title" style={{ fontSize: '2.5rem', fontWeight: 900 }}>Biometric Enrollment</h2>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+            <div className="responsive-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
 
                 {/* Form Section */}
-                <div className="card" style={{ padding: '2rem' }}>
+                <div className="card responsive-padding" style={{ padding: '2rem' }}>
                     {msg.text && (
                         <div className={`badge badge-${msg.type === 'error' ? 'danger' : msg.type === 'success' ? 'success' : 'warning'}`}
                             style={{ padding: '1rem', width: '100%', marginBottom: '1rem', display: 'flex', gap: '8px', fontSize: '1rem' }}>
@@ -473,7 +473,7 @@ function Register() {
                         )}
                     </div>
 
-                    <div className="card" style={{ marginTop: '1rem', padding: '1.25rem' }}>
+                    <div className="card responsive-padding" style={{ marginTop: '1rem', padding: '1.25rem' }}>
                         <h4 style={{ margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '8px' }}><Layers size={18} /> Enrollment Steps</h4>
                         <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                             <div style={{ opacity: poseStep >= 0 ? 1 : 0.5, fontWeight: poseStep === 0 ? 700 : 400, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>

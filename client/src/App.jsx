@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { ScanFace, UserPlus, Camera, Lock, Home as HomeIcon } from 'lucide-react';
-import Register from './pages/Register';
+import AdaptiveEnroll from './pages/AdaptiveEnroll';
 import Attendance from './pages/Attendance';
 import Admin from './pages/Admin';
 import AdminLogin from './pages/AdminLogin';
@@ -56,7 +56,7 @@ function App() {
           <main className="main-content">
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/register" element={<Register />} />
+              <Route path="/register" element={<AdaptiveEnroll />} />
               <Route path="/attendance" element={<Attendance />} />
               <Route path="/admin-login" element={<AdminLogin />} />
               <Route

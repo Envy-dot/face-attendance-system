@@ -9,10 +9,10 @@ function Home() {
             <div style={{ position: 'fixed', bottom: '0%', right: '-10%', width: '40vw', height: '40vw', background: 'radial-gradient(circle, rgba(14, 165, 233, 0.3), transparent 70%)', filter: 'blur(100px)', zIndex: -1, opacity: 0.5 }} />
 
             {/* Hero Section */}
-            <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem 2rem', textAlign: 'center' }}>
+            <main className="responsive-hero-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem 2rem', textAlign: 'center' }}>
                 <div className="animate-up" style={{ maxWidth: '900px', width: '100%' }}>
 
-                    <h1 style={{ fontSize: 'clamp(3rem, 5vw, 5rem)', fontWeight: 900, lineHeight: 1.05, marginBottom: '1.5rem', color: 'var(--text-main)', letterSpacing: '-1.5px' }}>
+                    <h1 className="responsive-title" style={{ fontSize: 'clamp(3rem, 5vw, 5rem)', fontWeight: 900, lineHeight: 1.05, marginBottom: '1.5rem', color: 'var(--text-main)', letterSpacing: '-1.5px' }}>
                         Effortless Attendance via <br />
                         <span style={{ background: 'linear-gradient(135deg, var(--primary), var(--secondary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                             Facial Recognition
@@ -24,10 +24,10 @@ function Home() {
                     </p>
 
                     <div className="flex-center button-gutter" style={{ marginBottom: '5rem' }}>
-                        <Link to="/attendance" className="btn btn-primary" style={{ padding: '1.2rem 3rem', fontSize: '1.1rem', borderRadius: '50px', boxShadow: '0 0 25px var(--primary-glow)', textDecoration: 'none' }}>
+                        <Link to="/attendance" className="btn btn-primary responsive-btn" style={{ padding: '1.2rem 3rem', fontSize: '1.1rem', borderRadius: '50px', boxShadow: '0 0 25px var(--primary-glow)', textDecoration: 'none' }}>
                             <Camera size={22} /> ENTER SCANNER
                         </Link>
-                        <Link to="/register" className="btn btn-secondary" style={{ padding: '1.2rem 3rem', fontSize: '1.1rem', borderRadius: '50px', background: 'var(--bg-glass-strong)', backdropFilter: 'blur(10px)', border: '1px solid var(--border-light)', textDecoration: 'none', boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.05)' }}>
+                        <Link to="/register" className="btn btn-secondary responsive-btn" style={{ padding: '1.2rem 3rem', fontSize: '1.1rem', borderRadius: '50px', background: 'var(--bg-glass-strong)', backdropFilter: 'blur(10px)', border: '1px solid var(--border-light)', textDecoration: 'none', boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.05)' }}>
                             <UserPlus size={22} /> REGISTER FACE
                         </Link>
                     </div>
@@ -55,7 +55,7 @@ function Home() {
                     </div>
 
                     {/* How It Works Section */}
-                    <div style={{ marginTop: '5rem', textAlign: 'left', background: 'var(--bg-glass)', borderRadius: '24px', padding: '3rem', border: '1px solid var(--border-light)', boxShadow: 'var(--glass-shadow)', backdropFilter: 'blur(20px)' }}>
+                    <div className="responsive-padding" style={{ marginTop: '5rem', textAlign: 'left', background: 'var(--bg-glass)', borderRadius: '24px', padding: '3rem', border: '1px solid var(--border-light)', boxShadow: 'var(--glass-shadow)', backdropFilter: 'blur(20px)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem', justifyContent: 'center' }}>
                             <HelpCircle size={32} className="text-primary" />
                             <h2 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-main)', margin: 0 }}>System Instructions</h2>
