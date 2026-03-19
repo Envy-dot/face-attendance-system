@@ -292,12 +292,15 @@ function MobileEnroll() {
         const { name, value } = e.target;
         if (name === 'name' && !/^[a-zA-Z\s]*$/.test(value)) return;
         if (name === 'matric_no' && !/^[a-zA-Z0-9/\-]*$/.test(value)) return;
+        
+        const finalValue = name === 'name' ? value.toUpperCase() : value;
+
         if (name === 'course') {
             const mappedDepartment = courseToDepartmentMap[value] || '';
             setFormData({ ...formData, course: value, department: mappedDepartment });
             return;
         }
-        setFormData({ ...formData, [name]: value });
+        setFormData({ ...formData, [name]: finalValue });
     };
 
     const toggleClass = (id) => setSelectedClasses(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);

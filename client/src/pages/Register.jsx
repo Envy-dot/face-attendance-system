@@ -346,12 +346,15 @@ function Register() {
         if (name === 'matric_no') {
             if (!/^[a-zA-Z0-9/\-]*$/.test(value)) return;
         }
+
+        const finalValue = name === 'name' ? value.toUpperCase() : value;
+
         if (name === 'course') {
             const mappedDepartment = courseToDepartmentMap[value] || '';
             setFormData({ ...formData, course: value, department: mappedDepartment });
             return;
         }
-        setFormData({ ...formData, [name]: value });
+        setFormData({ ...formData, [name]: finalValue });
     };
     const toggleClass = (id) => setSelectedClasses(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
 

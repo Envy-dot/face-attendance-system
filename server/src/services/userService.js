@@ -3,7 +3,9 @@ const cloudinary = require('../config/cloudinary');
 
 const registerUser = async (user) => {
     let { name, matric_no, level, department, course, photo, descriptor, section, classIds } = user;
-
+    
+    // Enforce BLOCK LETTERS as per system requirements
+    name = (name || '').toUpperCase();
     // Handle Cloudinary Upload for Base64 photo
     if (photo && photo.startsWith('data:image')) {
         try {

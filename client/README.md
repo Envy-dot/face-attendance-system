@@ -78,13 +78,18 @@ Before setting up the frontend, ensure you have the following installed:
     -   *Limit*: > 2,000 users may cause significant lag on client devices as every face descriptor is downloaded and matched locally.
 -   **Images**: Actual images are **NOT** stored. Only mathematical face descriptors are saved to the database to ensure privacy.
 
+## Adaptive Design & Mobile Optimization
+
+This Face Attendance System has been recently enhanced with an **Adaptive Design** to provide a native app-like experience on any mobile device (iOS and Android), while maintaining a powerful dashboard for desktop users.
+
+### Key Features:
+- **Adaptive Layout Architecture**: Automatically switches between a full-featured Desktop Dashboard and a touch-optimized Mobile UI.
+- **Native Mobile Enrollment**: A dedicated flow featuring a vertical form and a centered, high-refresh camera viewport.
+- **Selfie-Mirror & Square Cropping**: The mobile camera feed is squared (`1:1`) with an intuitive mirror effect (`scaleX(-1)`) for a natural feel.
+- **Real-Time AI Feedback**: High-performance green bounding boxes follow faces accurately with zero visual stutter.
+- **Privacy-Preserving**: Converts facial landmarks into 128-dimensional mathematical descriptors; no actual photos are stored.
+- **Device-Level Security**: Route protection automatically blocks administrative or scanner pages on mobile devices.
+
 ## About
 
-This Face Attendance System is a lightweight, privacy-focused biometric attendance solution designed for small to medium-sized organizations. It provides real-time facial recognition directly in the browser without storing images, ensuring user privacy while maintaining accurate attendance records. The system is easy to deploy and requires minimal infrastructure, making it ideal for schools, offices, and events.
-
-**Key Features:**
-- Real-time browser-based facial recognition
-- Privacy-preserving (no image storage)
-- Lightweight and fast performance
-- SQLite database for local data management
-- Simple setup and deployment
+The Face Attendance System is a lightweight, privacy-focused biometric solution designed for modern organizations. It is easy to deploy, requires minimal infrastructure, and operates entirely in the browser for maximum accessibility.
