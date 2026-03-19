@@ -293,25 +293,25 @@ function MobileEnroll() {
     const toggleClass = (id) => setSelectedClasses(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
 
     return (
-        <div className="flex flex-col w-full px-4 py-8 animate-fade" style={{ maxWidth: '100%', overflowX: 'hidden' }}>
+        <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', width: '100%', padding: '1rem', boxSizing: 'border-box', overflowX: 'hidden' }}>
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                <h2 className="text-3xl font-black text-gray-900" style={{ color: 'var(--text-main)' }}>Mobile Enrollment</h2>
+                <h2 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-main)', margin: 0 }}>Mobile Enrollment</h2>
             </div>
 
-            <div className="flex flex-col gap-6 w-full">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
                 
                 {/* Camera Section */}
-                <div className="card w-full flex flex-col items-center" style={{ padding: '1rem', borderRadius: '20px' }}>
-                    <div className="relative w-full rounded-2xl overflow-hidden bg-slate-100 border-4 border-white shadow-lg flex justify-center items-center" style={{ minHeight: '300px' }}>
+                <div className="card" style={{ padding: '1rem', width: '100%' }}>
+                    <div className="video-wrapper" style={{ position: 'relative', width: '100%', borderRadius: 'var(--radius-xl)', overflow: 'hidden', minHeight: '300px', background: '#f8fafc', border: '4px solid white', boxShadow: '0 10px 30px -5px rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                         {cameraError ? (
-                            <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-white backdrop-blur-md z-10 p-4 text-center">
-                                <AlertCircle size={48} className="text-red-500 mb-3" />
-                                <h3 className="text-xl font-bold mb-1">Camera Required</h3>
-                                <p className="opacity-80 text-sm">Please allow camera permissions in your browser settings to enroll.</p>
+                            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', backdropFilter: 'blur(4px)', zIndex: 10, padding: '1rem', textAlign: 'center' }}>
+                                <AlertCircle size={48} style={{ color: 'var(--danger)', marginBottom: '0.5rem' }} />
+                                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0' }}>Camera Required</h3>
+                                <p style={{ opacity: 0.8, fontSize: '0.9rem', margin: 0 }}>Please allow camera permissions in your browser settings to enroll.</p>
                             </div>
                         ) : initializing && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-slate-50 text-slate-500 font-medium z-10">
-                                Starts Camera...
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', color: 'var(--text-muted)', fontWeight: 500, zIndex: 10 }}>
+                                Starting Camera...
                             </div>
                         )}
 
@@ -320,61 +320,63 @@ function MobileEnroll() {
                             autoPlay 
                             muted 
                             playsInline 
-                            className="w-full h-auto block" 
+                            style={{ width: '100%', height: 'auto', display: 'block' }} 
                         />
 
                         <canvas 
                             ref={canvasRef} 
-                            className="absolute top-0 left-0 w-full h-full pointer-events-none z-[5]" 
+                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 5 }} 
                         />
 
-                        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-3 z-10">
+                        {/* Capture Thumbnails Overlay */}
+                        <div style={{ position: 'absolute', bottom: '1rem', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '0.75rem', zIndex: 10 }}>
                             {captures.map((blob, i) => (
-                                <div key={i} className="w-14 h-14 rounded-xl overflow-hidden border-[3px] border-blue-500 shadow-md bg-white">
-                                    <img src={URL.createObjectURL(blob)} className="w-full h-full object-cover" />
+                                <div key={i} style={{ width: '3.5rem', height: '3.5rem', borderRadius: '0.75rem', overflow: 'hidden', border: '3px solid var(--primary)', boxShadow: '0 4px 6px rgba(0,0,0,0.2)', background: 'white' }}>
+                                    <img src={URL.createObjectURL(blob)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 </div>
                             ))}
                         </div>
 
+                        {/* Guidance Overlay */}
                         {guidance && (
-                            <div className="absolute bottom-[20%] left-0 right-0 text-center z-[6]">
-                                <span className="bg-white/90 backdrop-blur-md text-slate-800 px-5 py-2 rounded-full font-bold text-sm shadow-lg border border-slate-200">
+                            <div style={{ position: 'absolute', bottom: '20%', left: 0, right: 0, textAlign: 'center', zIndex: 6 }}>
+                                <span style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', color: 'var(--text-main)', padding: '0.5rem 1.25rem', borderRadius: '50px', fontWeight: 700, fontSize: '0.9rem', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', border: '1px solid var(--border-light)' }}>
                                     {guidance}
                                 </span>
                             </div>
                         )}
                     </div>
 
-                    <div className="mt-4 w-full bg-white/60 rounded-xl p-3 border border-slate-200 shadow-sm backdrop-blur-sm">
-                        <h4 className="flex items-center gap-2 font-bold mb-2 text-sm text-slate-800"><Layers size={16} /> Steps</h4>
-                        <div className="text-xs text-slate-600 space-y-2">
-                            <div className="flex items-center gap-2" style={{ opacity: poseStep >= 0 ? 1 : 0.5, fontWeight: poseStep === 0 ? 700 : 400 }}>
+                    <div style={{ marginTop: '1rem', background: 'var(--bg-glass)', borderRadius: 'var(--radius-md)', padding: '1rem', border: '1px solid var(--border-light)' }}>
+                        <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--text-main)' }}><Layers size={16} /> Steps</h4>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: poseStep >= 0 ? 1 : 0.5, fontWeight: poseStep === 0 ? 700 : 400, marginBottom: '0.5rem' }}>
                                 1. Front Pose (No Glasses)
-                                {captures.length > 0 && <CheckCircle size={14} className="text-emerald-500" />}
+                                {captures.length > 0 && <CheckCircle size={14} color="var(--success)" />}
                             </div>
-                            <div className="flex items-center gap-2" style={{ opacity: poseStep >= 1 ? 1 : 0.5, fontWeight: poseStep === 1 ? 700 : 400 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: poseStep >= 1 ? 1 : 0.5, fontWeight: poseStep === 1 ? 700 : 400 }}>
                                 2. Alternate Pose (Turn Head)
-                                {captures.length > 1 && <CheckCircle size={14} className="text-emerald-500" />}
+                                {captures.length > 1 && <CheckCircle size={14} color="var(--success)" />}
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Form Section */}
-                <div className="card w-full flex flex-col gap-4" style={{ padding: '1.5rem', borderRadius: '20px' }}>
+                <div className="card" style={{ padding: '1.5rem', width: '100%' }}>
                     {msg.text && (
-                        <div className={`p-4 rounded-xl mb-2 text-sm flex gap-3 font-medium items-start ${msg.type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' : msg.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-blue-50 text-blue-800 border border-blue-200'}`}>
-                            <Info size={18} className="shrink-0 mt-0.5" />
-                            <span className="leading-snug">{msg.text}</span>
+                        <div className={`badge badge-${msg.type === 'error' ? 'danger' : msg.type === 'success' ? 'success' : 'warning'}`}
+                            style={{ padding: '0.75rem', width: '100%', marginBottom: '1rem', display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.85rem' }}>
+                            <Info size={18} style={{ marginTop: '0.1rem', flexShrink: 0 }} /> <span>{msg.text}</span>
                         </div>
                     )}
 
-                    <div className="flex flex-col gap-3">
-                        <input name="name" className="w-full px-4 py-3.5 rounded-xl bg-white border border-slate-300 text-base shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" placeholder="Full Name" value={formData.name} onChange={handleChange} disabled={status !== 'IDLE'} />
-                        <input name="matric_no" className="w-full px-4 py-3.5 rounded-xl bg-white border border-slate-300 text-base shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" placeholder="Matric No" value={formData.matric_no} onChange={handleChange} disabled={status !== 'IDLE'} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <input name="name" placeholder="Full Name" value={formData.name} onChange={handleChange} disabled={status !== 'IDLE'} style={{ width: '100%' }} />
+                        <input name="matric_no" placeholder="Matric No" value={formData.matric_no} onChange={handleChange} disabled={status !== 'IDLE'} style={{ width: '100%' }} />
                         
-                        <div className="flex gap-3">
-                            <select name="level" className="w-1/3 px-3 py-3.5 rounded-xl bg-white border border-slate-300 text-base shadow-sm outline-none" value={formData.level} onChange={handleChange} disabled={status !== 'IDLE'}>
+                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                            <select name="level" value={formData.level} onChange={handleChange} disabled={status !== 'IDLE'} style={{ width: '35%' }}>
                                 <option value="">Level</option>
                                 <option value="100">100</option>
                                 <option value="200">200</option>
@@ -383,22 +385,27 @@ function MobileEnroll() {
                                 <option value="500">500</option>
                                 <option value="600">600</option>
                             </select>
-                            <input name="department" className="w-2/3 px-4 py-3.5 rounded-xl bg-slate-100 border border-slate-200 text-base text-slate-500 shadow-inner" placeholder="Dept (Auto)" value={formData.department} disabled={true} />
+                            <input name="department" placeholder="Dept (Auto)" value={formData.department} disabled={true} style={{ width: '65%', background: '#f1f5f9', color: '#64748b' }} />
                         </div>
                         
-                        <select name="course" className="w-full px-4 py-3.5 rounded-xl bg-white border border-slate-300 text-base shadow-sm outline-none shrink-0" value={formData.course} onChange={handleChange} disabled={status !== 'IDLE'}>
+                        <select name="course" value={formData.course} onChange={handleChange} disabled={status !== 'IDLE'} style={{ width: '100%' }}>
                             <option value="">Select a Course</option>
                             {Object.keys(courseToDepartmentMap).map(c => (
                                 <option key={c} value={c}>{c}</option>
                             ))}
                         </select>
 
-                        <div className="mt-2">
-                            <label className="text-sm font-bold mb-3 block text-slate-700">Classes</label>
-                            <div className="flex flex-wrap gap-2.5">
+                        <div style={{ marginTop: '0.5rem' }}>
+                            <label style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.5rem', display: 'block', color: 'var(--text-main)' }}>Classes</label>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                                 {classes.map(c => (
                                     <div key={c.id} onClick={() => status === 'IDLE' && toggleClass(c.id)}
-                                        className={`px-4 py-2 rounded-full text-sm font-bold cursor-pointer transition-all border ${selectedClasses.includes(c.id) ? 'bg-blue-600 text-white border-blue-700 shadow-md ring-2 ring-blue-300 ring-offset-1' : 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200'}`}>
+                                        style={{
+                                            padding: '6px 14px', borderRadius: '50px', fontSize: '0.8rem', fontWeight: 700, cursor: status === 'IDLE' ? 'pointer' : 'default',
+                                            background: selectedClasses.includes(c.id) ? 'var(--primary)' : '#f1f5f9',
+                                            color: selectedClasses.includes(c.id) ? 'white' : 'var(--text-secondary)',
+                                            border: selectedClasses.includes(c.id) ? '2px solid rgba(59,130,246,0.3)' : '1px solid var(--border-light)'
+                                        }}>
                                         {c.code}
                                     </div>
                                 ))}
@@ -406,25 +413,25 @@ function MobileEnroll() {
                         </div>
                     </div>
 
-                    <div className="mt-4">
+                    <div style={{ marginTop: '1.5rem' }}>
                         {status === 'IDLE' && (
-                            <button className="btn btn-primary !w-full !py-4 rounded-2xl text-base shadow-xl" onClick={startEnrollment}>
+                            <button className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1rem', borderRadius: '1rem' }} onClick={startEnrollment}>
                                 <UserCheck size={20} /> START ENROLLMENT
                             </button>
                         )}
                         {status === 'READY_TO_SUBMIT' && (
-                            <button className="btn btn-primary !w-full !py-4 rounded-2xl text-base shadow-xl !bg-emerald-600 hover:!bg-emerald-700" onClick={handleSubmit}>
+                            <button className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1rem', borderRadius: '1rem', background: 'var(--success)' }} onClick={handleSubmit}>
                                 <CheckCircle size={20} /> SUBMIT PROFILE
                             </button>
                         )}
                         {(status === 'DETECTING' || status === 'CAPTURING') && (
-                            <div className="w-full py-4 rounded-2xl text-base bg-sky-100 text-sky-800 font-bold flex items-center justify-center gap-2 border border-sky-200">
-                                <Camera className="animate-pulse" size={20} />
+                            <div className="btn" style={{ width: '100%', padding: '1rem', fontSize: '1rem', borderRadius: '1rem', background: '#e0f2fe', color: '#0369a1', cursor: 'default' }}>
+                                <Camera className="spin" size={20} style={{ marginRight: '8px' }} />
                                 {poseStep === 0 ? "Scanning Face..." : "Scanning Second Pose..."}
                             </div>
                         )}
                         {status === 'FAIL' && (
-                            <button className="btn !w-full !py-4 rounded-2xl text-base bg-amber-500 text-white font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-amber-600" onClick={() => { setStatus('IDLE'); setMsg({ type: '', text: '' }); }}>
+                            <button className="btn btn-warning" style={{ width: '100%', padding: '1rem', fontSize: '1rem', borderRadius: '1rem', background: 'var(--warning)', color: 'white', border: 'none' }} onClick={() => { setStatus('IDLE'); setMsg({ type: '', text: '' }); }}>
                                 <RefreshCw size={20} /> RETRY ENROLLMENT
                             </button>
                         )}
