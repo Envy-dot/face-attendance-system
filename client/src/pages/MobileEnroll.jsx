@@ -122,16 +122,24 @@ function MobileEnroll() {
             return;
         }
 
-        const displaySize = { width: videoRef.current.clientWidth, height: videoRef.current.clientHeight };
+        // Use native video resolution so canvas perfectly overlays crop bounds when using objectFit cover
+        const displaySize = { 
+            width: videoRef.current.videoWidth, 
+            height: videoRef.current.videoHeight 
+        };
         
         if (displaySize.width > 0 && displaySize.height > 0 && canvasRef.current) {
-            faceapi.matchDimensions(canvasRef.current, displaySize);
-            const ctx = canvasRef.current.getContext('2d');
-
+            
             const detection = await faceapi.detectSingleFace(videoRef.current, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
                 .withFaceLandmarks()
                 .withFaceDescriptor();
 
+            // Only overwrite canvas dimensions (which implicitly triggers a canvas clear state) if the display size actually changed!
+            if (canvasRef.current.width !== displaySize.width || canvasRef.current.height !== displaySize.height) {
+                faceapi.matchDimensions(canvasRef.current, displaySize);
+            }
+
+            const ctx = canvasRef.current.getContext('2d');
             // Clear prior frames precisely after awaiting ML to prevent visual flash
             ctx.clearRect(0, 0, displaySize.width, displaySize.height);
 
@@ -356,7 +364,8 @@ function MobileEnroll() {
 
                 {/* Camera Section */}
                 <div className="card" style={{ padding: '0.5rem', width: '100%' }}>
-                    <div style={{ position: 'relative', width: '100%', borderRadius: 'calc(var(--radius-xl) - 0.5rem)', overflow: 'hidden', background: '#0f172a', border: '3px solid white', boxShadow: '0 10px 30px -5px rgba(0,0,0,0.1)' }}>
+                    {/* Fixed aspect ratio 1/1 for a perfectly square selfie look, overriding horizontal rectangles! */}
+                    <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', minHeight: '300px', borderRadius: 'calc(var(--radius-xl) - 0.5rem)', overflow: 'hidden', background: '#0f172a', border: '3px solid white', boxShadow: '0 10px 30px -5px rgba(0,0,0,0.1)' }}>
                         {cameraError ? (
                             <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', backdropFilter: 'blur(4px)', zIndex: 10, padding: '1rem', textAlign: 'center' }}>
                                 <AlertCircle size={48} style={{ color: 'var(--danger)', marginBottom: '0.5rem' }} />
@@ -374,12 +383,12 @@ function MobileEnroll() {
                             autoPlay 
                             muted 
                             playsInline 
-                            style={{ width: '100%', height: 'auto', display: 'block', transform: 'scaleX(-1)' }} 
+                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block', transform: 'scaleX(-1)' }} 
                         />
 
                         <canvas 
                             ref={canvasRef} 
-                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 5, transform: 'scaleX(-1)' }} 
+                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none', zIndex: 5, transform: 'scaleX(-1)' }} 
                         />
 
                         {/* Capture Thumbnails Overlay */}
