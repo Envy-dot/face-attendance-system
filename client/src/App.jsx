@@ -18,7 +18,7 @@ const ProtectedRoute = ({ children }) => {
 };
 
 // Nav Link component for active state styling
-const NavLink = ({ to, label, className = '' }) => {
+const NavLink = ({ to, label, className = '', style = {} }) => {
   const location = useLocation();
   const isActive = location.pathname === to || (location.pathname === '/admin' && to === '/admin-login');
 
@@ -26,6 +26,7 @@ const NavLink = ({ to, label, className = '' }) => {
     <Link
       to={to}
       className={`${isActive ? 'active' : ''} ${className}`}
+      style={style}
     >
       {label}
     </Link>
@@ -45,38 +46,47 @@ function App() {
   return (
     <ErrorBoundary>
       <Router>
-        <div className="app-container" style={{ paddingBottom: isMobile ? '80px' : '0', overflowX: 'hidden', touchAction: isMobile ? 'pan-y' : 'auto' }}>
+        <div className="app-container" style={{ overflowX: 'hidden', touchAction: isMobile ? 'pan-y' : 'auto' }}>
           <LiquidBackground />
 
-          <nav className="navbar" style={isMobile ? { padding: '1rem', display: 'flex', justifyContent: 'center', background: 'transparent', boxShadow: 'none', border: 'none' } : { margin: '1rem', borderRadius: 'var(--radius-lg)' }}>
-            <Link to="/" className="nav-brand" style={{ textDecoration: 'none' }}>
-              <ScanFace className="text-primary" size={isMobile ? 36 : 28} />
-              { !isMobile && "FaceAttend" }
+          <nav className="navbar" style={{ 
+            margin: isMobile ? '0' : '1rem', 
+            borderRadius: isMobile ? '0 0 var(--radius-lg) var(--radius-lg)' : 'var(--radius-lg)', 
+            padding: isMobile ? '0.8rem 1rem' : '1rem 2rem',
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderBottom: isMobile ? '1px solid var(--border-light)' : 'none',
+            position: isMobile ? 'sticky' : 'static',
+            top: 0,
+            zIndex: 100,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            boxShadow: isMobile ? '0 4px 20px rgba(0,0,0,0.05)' : 'none'
+          }}>
+            <Link to="/" className="nav-brand" style={{ textDecoration: 'none', gap: '0.5rem', display: 'flex', alignItems: 'center' }}>
+              <ScanFace className="text-primary" size={isMobile ? 24 : 28} />
+              <span style={{ fontSize: isMobile ? '1.1rem' : '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>FaceAttend</span>
             </Link>
 
-            {!isMobile && (
-              <div className="nav-links">
-                <NavLink to="/" label="Home" />
-                <NavLink to="/register" label="Enroll" />
-                <NavLink to="/attendance" label="Scanner" />
-                <NavLink to="/admin-login" label={<><Lock size={18} /> Lecturer</>} />
-              </div>
-            )}
-          </nav>
-
-          {isMobile && (
-            <div style={{ position: 'fixed', bottom: 0, left: 0, width: '100%', background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderTop: '1px solid var(--border-light)', zIndex: 100, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 2rem calc(1rem + env(safe-area-inset-bottom)) 2rem', boxShadow: '0 -10px 40px rgba(0,0,0,0.08)' }}>
-              
-              <Link to="/" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#94a3b8', textDecoration: 'none' }}>
-                <HomeIcon size={28} style={{ marginBottom: '4px' }} />
-                <span style={{ fontSize: '12px', fontWeight: 800 }}>Home</span>
-              </Link>
-              
-              <Link to="/register" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--primary)', color: 'white', borderRadius: '50px', padding: '0.85rem 3rem', fontWeight: 800, fontSize: '15px', textDecoration: 'none', boxShadow: '0 8px 25px rgba(59,130,246,0.3)' }}>
-                ENROLL NOW
-              </Link>
+            <div style={{ display: 'flex', gap: isMobile ? '0.2rem' : '1rem', alignItems: 'center' }}>
+              <NavLink to="/" style={{ fontWeight: 700, padding: isMobile ? '0.5rem' : '0.5rem 1rem', textDecoration: 'none', color: 'var(--text-secondary)' }} label="Home" />
+              <NavLink to="/register" style={{ 
+                background: 'var(--primary)', 
+                color: 'white', 
+                padding: isMobile ? '0.4rem 1rem' : '0.5rem 1.25rem', 
+                borderRadius: '50px', 
+                fontWeight: 700, 
+                fontSize: '0.9rem',
+                textDecoration: 'none',
+                boxShadow: '0 4px 15px rgba(59,130,246,0.3)',
+                marginLeft: isMobile ? '0.2rem' : '0'
+              }} label="Enroll" />
+              {!isMobile && <NavLink to="/attendance" label="Scanner" style={{ padding: '0.5rem 1rem', textDecoration: 'none', color: 'var(--text-secondary)' }} />}
+              {!isMobile && <NavLink to="/admin-login" label={<div style={{display: 'flex', alignItems: 'center', gap: '5px'}}><Lock size={15}/> Lecturer</div>} style={{ padding: '0.5rem 1rem', textDecoration: 'none', color: 'var(--text-secondary)' }} />}
             </div>
-          )}
+          </nav>
 
           <main className="main-content" style={isMobile ? { padding: '1rem', paddingTop: '0' } : {}}>
             <Routes>

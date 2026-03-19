@@ -127,11 +127,13 @@ function MobileEnroll() {
         if (displaySize.width > 0 && displaySize.height > 0 && canvasRef.current) {
             faceapi.matchDimensions(canvasRef.current, displaySize);
             const ctx = canvasRef.current.getContext('2d');
-            ctx.clearRect(0, 0, displaySize.width, displaySize.height);
 
             const detection = await faceapi.detectSingleFace(videoRef.current, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
                 .withFaceLandmarks()
                 .withFaceDescriptor();
+
+            // Clear prior frames precisely after awaiting ML to prevent visual flash
+            ctx.clearRect(0, 0, displaySize.width, displaySize.height);
 
             if (detection) {
                 const resizedDetections = faceapi.resizeResults(detection, displaySize);
@@ -300,6 +302,58 @@ function MobileEnroll() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
                 
+                {/* Form Section */}
+                <div className="card" style={{ padding: '1.5rem', width: '100%' }}>
+                    {msg.text && (
+                        <div className={`badge badge-${msg.type === 'error' ? 'danger' : msg.type === 'success' ? 'success' : 'warning'}`}
+                            style={{ padding: '0.75rem', width: '100%', marginBottom: '1rem', display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.85rem' }}>
+                            <Info size={18} style={{ marginTop: '0.1rem', flexShrink: 0 }} /> <span>{msg.text}</span>
+                        </div>
+                    )}
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <input name="name" placeholder="Full Name" value={formData.name} onChange={handleChange} disabled={status !== 'IDLE'} style={{ width: '100%' }} />
+                        <input name="matric_no" placeholder="Matric No" value={formData.matric_no} onChange={handleChange} disabled={status !== 'IDLE'} style={{ width: '100%' }} />
+                        
+                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                            <select name="level" value={formData.level} onChange={handleChange} disabled={status !== 'IDLE'} style={{ width: '35%' }}>
+                                <option value="">Level</option>
+                                <option value="100">100</option>
+                                <option value="200">200</option>
+                                <option value="300">300</option>
+                                <option value="400">400</option>
+                                <option value="500">500</option>
+                                <option value="600">600</option>
+                            </select>
+                            <input name="department" placeholder="Dept (Auto)" value={formData.department} disabled={true} style={{ width: '65%', background: '#f1f5f9', color: '#64748b' }} />
+                        </div>
+                        
+                        <select name="course" value={formData.course} onChange={handleChange} disabled={status !== 'IDLE'} style={{ width: '100%' }}>
+                            <option value="">Select a Course</option>
+                            {Object.keys(courseToDepartmentMap).map(c => (
+                                <option key={c} value={c}>{c}</option>
+                            ))}
+                        </select>
+
+                        <div style={{ marginTop: '0.5rem' }}>
+                            <label style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.5rem', display: 'block', color: 'var(--text-main)' }}>Classes</label>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                {classes.map(c => (
+                                    <div key={c.id} onClick={() => status === 'IDLE' && toggleClass(c.id)}
+                                        style={{
+                                            padding: '6px 14px', borderRadius: '50px', fontSize: '0.8rem', fontWeight: 700, cursor: status === 'IDLE' ? 'pointer' : 'default',
+                                            background: selectedClasses.includes(c.id) ? 'var(--primary)' : '#f1f5f9',
+                                            color: selectedClasses.includes(c.id) ? 'white' : 'var(--text-secondary)',
+                                            border: selectedClasses.includes(c.id) ? '2px solid rgba(59,130,246,0.3)' : '1px solid var(--border-light)'
+                                        }}>
+                                        {c.code}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Camera Section */}
                 <div className="card" style={{ padding: '0.5rem', width: '100%' }}>
                     <div style={{ position: 'relative', width: '100%', borderRadius: 'calc(var(--radius-xl) - 0.5rem)', overflow: 'hidden', background: '#0f172a', border: '3px solid white', boxShadow: '0 10px 30px -5px rgba(0,0,0,0.1)' }}>
@@ -362,80 +416,29 @@ function MobileEnroll() {
                     </div>
                 </div>
 
-                {/* Form Section */}
-                <div className="card" style={{ padding: '1.5rem', width: '100%' }}>
-                    {msg.text && (
-                        <div className={`badge badge-${msg.type === 'error' ? 'danger' : msg.type === 'success' ? 'success' : 'warning'}`}
-                            style={{ padding: '0.75rem', width: '100%', marginBottom: '1rem', display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.85rem' }}>
-                            <Info size={18} style={{ marginTop: '0.1rem', flexShrink: 0 }} /> <span>{msg.text}</span>
+                {/* Primary Actions Button */}
+                <div style={{ width: '100%' }}>
+                    {status === 'IDLE' && (
+                        <button className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1rem', borderRadius: '1rem' }} onClick={startEnrollment}>
+                            <UserCheck size={20} /> START ENROLLMENT
+                        </button>
+                    )}
+                    {status === 'READY_TO_SUBMIT' && (
+                        <button className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1rem', borderRadius: '1rem', background: 'var(--success)' }} onClick={handleSubmit}>
+                            <CheckCircle size={20} /> SUBMIT PROFILE
+                        </button>
+                    )}
+                    {(status === 'DETECTING' || status === 'CAPTURING') && (
+                        <div className="btn" style={{ width: '100%', padding: '1rem', fontSize: '1rem', borderRadius: '1rem', background: '#e0f2fe', color: '#0369a1', cursor: 'default' }}>
+                            <Camera className="spin" size={20} style={{ marginRight: '8px' }} />
+                            {poseStep === 0 ? "Scanning Face..." : "Scanning Second Pose..."}
                         </div>
                     )}
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <input name="name" placeholder="Full Name" value={formData.name} onChange={handleChange} disabled={status !== 'IDLE'} style={{ width: '100%' }} />
-                        <input name="matric_no" placeholder="Matric No" value={formData.matric_no} onChange={handleChange} disabled={status !== 'IDLE'} style={{ width: '100%' }} />
-                        
-                        <div style={{ display: 'flex', gap: '0.75rem' }}>
-                            <select name="level" value={formData.level} onChange={handleChange} disabled={status !== 'IDLE'} style={{ width: '35%' }}>
-                                <option value="">Level</option>
-                                <option value="100">100</option>
-                                <option value="200">200</option>
-                                <option value="300">300</option>
-                                <option value="400">400</option>
-                                <option value="500">500</option>
-                                <option value="600">600</option>
-                            </select>
-                            <input name="department" placeholder="Dept (Auto)" value={formData.department} disabled={true} style={{ width: '65%', background: '#f1f5f9', color: '#64748b' }} />
-                        </div>
-                        
-                        <select name="course" value={formData.course} onChange={handleChange} disabled={status !== 'IDLE'} style={{ width: '100%' }}>
-                            <option value="">Select a Course</option>
-                            {Object.keys(courseToDepartmentMap).map(c => (
-                                <option key={c} value={c}>{c}</option>
-                            ))}
-                        </select>
-
-                        <div style={{ marginTop: '0.5rem' }}>
-                            <label style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.5rem', display: 'block', color: 'var(--text-main)' }}>Classes</label>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                {classes.map(c => (
-                                    <div key={c.id} onClick={() => status === 'IDLE' && toggleClass(c.id)}
-                                        style={{
-                                            padding: '6px 14px', borderRadius: '50px', fontSize: '0.8rem', fontWeight: 700, cursor: status === 'IDLE' ? 'pointer' : 'default',
-                                            background: selectedClasses.includes(c.id) ? 'var(--primary)' : '#f1f5f9',
-                                            color: selectedClasses.includes(c.id) ? 'white' : 'var(--text-secondary)',
-                                            border: selectedClasses.includes(c.id) ? '2px solid rgba(59,130,246,0.3)' : '1px solid var(--border-light)'
-                                        }}>
-                                        {c.code}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style={{ marginTop: '1.5rem' }}>
-                        {status === 'IDLE' && (
-                            <button className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1rem', borderRadius: '1rem' }} onClick={startEnrollment}>
-                                <UserCheck size={20} /> START ENROLLMENT
-                            </button>
-                        )}
-                        {status === 'READY_TO_SUBMIT' && (
-                            <button className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1rem', borderRadius: '1rem', background: 'var(--success)' }} onClick={handleSubmit}>
-                                <CheckCircle size={20} /> SUBMIT PROFILE
-                            </button>
-                        )}
-                        {(status === 'DETECTING' || status === 'CAPTURING') && (
-                            <div className="btn" style={{ width: '100%', padding: '1rem', fontSize: '1rem', borderRadius: '1rem', background: '#e0f2fe', color: '#0369a1', cursor: 'default' }}>
-                                <Camera className="spin" size={20} style={{ marginRight: '8px' }} />
-                                {poseStep === 0 ? "Scanning Face..." : "Scanning Second Pose..."}
-                            </div>
-                        )}
-                        {status === 'FAIL' && (
-                            <button className="btn btn-warning" style={{ width: '100%', padding: '1rem', fontSize: '1rem', borderRadius: '1rem', background: 'var(--warning)', color: 'white', border: 'none' }} onClick={() => { setStatus('IDLE'); setMsg({ type: '', text: '' }); }}>
-                                <RefreshCw size={20} /> RETRY ENROLLMENT
-                            </button>
-                        )}
-                    </div>
+                    {status === 'FAIL' && (
+                        <button className="btn btn-warning" style={{ width: '100%', padding: '1rem', fontSize: '1rem', borderRadius: '1rem', background: 'var(--warning)', color: 'white', border: 'none' }} onClick={() => { setStatus('IDLE'); setMsg({ type: '', text: '' }); }}>
+                            <RefreshCw size={20} /> RETRY ENROLLMENT
+                        </button>
+                    )}
                 </div>
 
             </div>
