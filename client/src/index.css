@@ -484,8 +484,33 @@ tr:hover td {
   background: #94a3b8;
 }
 
+/* project badge */
+.project-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1.25rem;
+  background: var(--bg-glass-strong);
+  border-radius: 50px;
+  border: 1px solid var(--border-light);
+  margin-bottom: 2rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: 0.05rem;
+  text-transform: uppercase;
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(10px);
+}
+
 /* --- Mobile Responsiveness --- */
 @media (max-width: 768px) {
+  .project-badge {
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+    margin-bottom: 1.5rem;
+    max-width: 90% !important;
+  }
   .responsive-grid-2 {
     grid-template-columns: 1fr !important;
     gap: 1.5rem !important;

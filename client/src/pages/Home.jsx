@@ -12,6 +12,10 @@ function Home() {
             <main className="responsive-hero-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem 2rem', textAlign: 'center' }}>
                 <div className="animate-up" style={{ maxWidth: '900px', width: '100%' }}>
 
+                    <div className="project-badge animate-fade">
+                        <ScanFace size={18} /> Facial Recognition-Based Attendance System
+                    </div>
+
                     <h1 className="responsive-title" style={{ fontSize: 'clamp(3rem, 5vw, 5rem)', fontWeight: 900, lineHeight: 1.05, marginBottom: '1.5rem', color: 'var(--text-main)', letterSpacing: '-1.5px' }}>
                         Effortless Attendance via <br />
                         <span style={{ background: 'linear-gradient(135deg, var(--primary), var(--secondary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
@@ -113,7 +117,7 @@ function Home() {
 
             {/* Footer */}
             <footer style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', borderTop: '1px solid var(--border-light)', marginTop: 'auto', fontWeight: 500 }}>
-                &copy; Facial Recognition-Based Attendance System by the SWAG developer. P.S. I was listening to Jhené Aiko when I finished this.
+                &copy; Facial Recognition-Based Attendance System by Duru A. Jesse. P.S. I was listening to Jhené Aiko when I finished this.
             </footer>
         </div>
     );
