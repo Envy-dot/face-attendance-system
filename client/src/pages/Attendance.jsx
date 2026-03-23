@@ -179,7 +179,11 @@ function Attendance() {
 
                     ctx.fillStyle = isConfident ? '#10b981' : '#f59e0b';
                     ctx.font = '16px sans-serif';
-                    ctx.fillText(`${Math.round(score * 100)}%`, box.x, box.y > 20 ? box.y - 5 : 20);
+                    ctx.save();
+                    ctx.translate(box.x + box.width, box.y > 20 ? box.y - 5 : 20);
+                    ctx.scale(-1, 1);
+                    ctx.fillText(`${Math.round(score * 100)}%`, 0, 0);
+                    ctx.restore();
 
                     // Auto-Verify Logic & Liveness Detection
                     const currentStatus = stateRef.current.status;
