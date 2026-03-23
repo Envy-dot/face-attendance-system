@@ -16,7 +16,14 @@ const createClass = async (name, code, department) => {
 };
 
 const getAllClasses = async () => {
-    const { rows } = await pool.query('SELECT * FROM classes ORDER BY code ASC');
+    const query = `
+        SELECT c.id, c.name, c.code, c.department, COUNT(e.user_id) as enrolled_count
+        FROM classes c
+        LEFT JOIN enrollments e ON c.id = e.class_id
+        GROUP BY c.id
+        ORDER BY c.code ASC
+    `;
+    const { rows } = await pool.query(query);
     return rows;
 };
 

@@ -32,12 +32,13 @@ const verifyFace = async (descriptor) => {
     return null;
 };
 
-const getAttendanceLogs = async (search, sessionIdParam = null) => {
+const getAttendanceLogs = async (search, sessionIdParam = null, filterDate = null) => {
     let query = `
-    SELECT a.id, to_char(a.timestamp, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as timestamp, a.type, a.image, u.name, u.matric_no, u.level, u.department, s.name as session_name
+    SELECT a.id, to_char(a.timestamp, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as timestamp, a.type, a.image, u.name, u.matric_no, u.level, u.department, s.name as session_name, c.code as class_code
     FROM attendance a 
     JOIN users u ON a.user_id = u.id 
     LEFT JOIN sessions s ON a.session_id = s.id
+    LEFT JOIN classes c ON s.class_id = c.id
   `;
 
     const params = [];
@@ -53,6 +54,12 @@ const getAttendanceLogs = async (search, sessionIdParam = null) => {
     if (sessionIdParam) {
         conditions.push(`a.session_id = $${paramIndex}`);
         params.push(sessionIdParam);
+        paramIndex += 1;
+    }
+
+    if (filterDate) {
+        conditions.push(`date(a.timestamp)::text = $${paramIndex}`);
+        params.push(filterDate);
         paramIndex += 1;
     }
 

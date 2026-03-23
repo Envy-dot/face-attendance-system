@@ -488,6 +488,7 @@ tr:hover td {
 .project-badge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.6rem;
   padding: 0.6rem 1.25rem;
   background: var(--bg-glass-strong);
@@ -501,6 +502,10 @@ tr:hover td {
   text-transform: uppercase;
   box-shadow: var(--glass-shadow);
   backdrop-filter: blur(10px);
+  max-width: 100%;
+}
+.project-badge svg {
+  flex-shrink: 0;
 }
 
 /* --- Mobile Responsiveness --- */
@@ -509,7 +514,9 @@ tr:hover td {
     padding: 0.5rem 1rem;
     font-size: 0.75rem;
     margin-bottom: 1.5rem;
-    max-width: 90% !important;
+    line-height: 1.4;
+    text-wrap: balance;
+    text-align: left;
   }
   .responsive-grid-2 {
     grid-template-columns: 1fr !important;

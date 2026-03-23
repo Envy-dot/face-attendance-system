@@ -26,6 +26,7 @@ function Admin() {
     const [userPage, setUserPage] = useState(1);
     const [userTotalPages, setUserTotalPages] = useState(1);
     const [userTotalCount, setUserTotalCount] = useState(0);
+    const [isFetchingUsers, setIsFetchingUsers] = useState(false);
 
     const [logs, setLogs] = useState([]);
     const [activeSession, setActiveSession] = useState(null);
@@ -37,7 +38,7 @@ function Admin() {
     // Form inputs
     const [newSessionName, setNewSessionName] = useState('');
     const [newSessionDuration, setNewSessionDuration] = useState('15');
-    const [bulkDate, setBulkDate] = useState('');
+    const [filterDate, setFilterDate] = useState('');
 
     // Debounce state for live search
     const [searchQuery, setSearchQuery] = useState('');
@@ -95,7 +96,7 @@ function Admin() {
         }
         if (activeTab === 'logs') fetchLogs();
         if (activeTab === 'sessions') fetchSessionHistory();
-    }, [activeTab, debouncedSearch]);
+    }, [activeTab, debouncedSearch, filterDate]);
 
     useEffect(() => {
         // Fetch users when the page changes explicitly without search debounce triggering it
@@ -112,6 +113,7 @@ function Admin() {
     };
 
     const fetchUsers = async (page = 1, search = '') => {
+        setIsFetchingUsers(true);
         // Build query string manually since we only need simple params
         const queryParams = new URLSearchParams();
         if (search) queryParams.append('search', search);
@@ -139,10 +141,11 @@ function Admin() {
         } else {
             console.error("Failed to fetch users");
         }
+        setIsFetchingUsers(false);
     };
 
     const fetchLogs = async () => {
-        const data = await api.attendance.getLogs(debouncedSearch);
+        const data = await api.attendance.getLogs(debouncedSearch, null, filterDate);
         const grouped = {};
         data.forEach(log => {
             const key = `${log.session_name || 'N/A'}_${log.matric_no || 'Unknown'}`;
@@ -319,10 +322,12 @@ function Admin() {
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                                <input type="date" value={bulkDate} onChange={e => setBulkDate(e.target.value)} style={{ width: 'auto' }} />
-                                <button className="btn btn-secondary" style={{ color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }} onClick={handleDeleteBulk}>
-                                    <Trash2 size={16} /> Clear Day
-                                </button>
+                                <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} style={{ width: 'auto' }} />
+                                {filterDate && (
+                                    <button className="btn btn-secondary" style={{ color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }} onClick={() => setFilterDate('')}>
+                                        Clear Filter
+                                    </button>
+                                )}
                                 <button className="btn btn-primary" onClick={() => window.open(api.attendance.exportUrl, '_blank')}>
                                     <Download size={16} /> Export Records
                                 </button>
@@ -343,6 +348,7 @@ function Admin() {
                         </div>
                         <UserTable
                             users={users}
+                            isFetching={isFetchingUsers}
                             onDeleteUser={handleDeleteUser}
                             onUserClick={setSelectedUser}
                             currentPage={userPage}

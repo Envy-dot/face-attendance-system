@@ -24,46 +24,20 @@ const registerUser = async (user) => {
     const { rows: existingUsers } = await pool.query('SELECT id, descriptor FROM users WHERE matric_no = $1', [matric_no]);
     const existingUser = existingUsers[0];
 
-    let userId;
     if (existingUser) {
-        let descriptors = [];
-        try {
-            const parsed = JSON.parse(existingUser.descriptor);
-            // Support both old format (array) and new format (array of arrays)
-            descriptors = Array.isArray(parsed[0]) ? parsed : [parsed];
-        } catch (e) {
-            descriptors = [];
-        }
-
-        // Append new descriptors
-        if (Array.isArray(descriptor) && Array.isArray(descriptor[0])) {
-            // It's an array of embeddings
-            descriptors.push(...descriptor);
-        } else {
-            // It's a single embedding
-            descriptors.push(descriptor);
-        }
-
-        // Keep only last 5 descriptors to prevent bloat but maintain accuracy
-        if (descriptors.length > 5) descriptors.shift();
-
-        await pool.query(
-            'UPDATE users SET name = $1, level = $2, department = $3, course = $4, photo = $5, descriptor = $6, section = $7, is_active = 1 WHERE id = $8',
-            [name, level, department, course, photo, JSON.stringify(descriptors), section, existingUser.id]
-        );
-        userId = existingUser.id;
-    } else {
-        // New user: store as array of arrays. 
-        // If descriptor is already an array of arrays (from multi-upload), use it.
-        // If it's a single descriptor array, wrap it.
-        const initialDescriptors = (Array.isArray(descriptor) && Array.isArray(descriptor[0])) ? descriptor : [descriptor];
-
-        const { rows } = await pool.query(
-            'INSERT INTO users (name, matric_no, level, department, course, photo, descriptor, section) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
-            [name, matric_no, level, department, course, photo, JSON.stringify(initialDescriptors), section]
-        );
-        userId = rows[0].id;
+        throw new Error("Student already enrolled. Please contact the lecturer to update your profile.");
     }
+    
+    // New user: store as array of arrays. 
+    // If descriptor is already an array of arrays (from multi-upload), use it.
+    // If it's a single descriptor array, wrap it.
+    const initialDescriptors = (Array.isArray(descriptor) && Array.isArray(descriptor[0])) ? descriptor : [descriptor];
+
+    const { rows } = await pool.query(
+        'INSERT INTO users (name, matric_no, level, department, course, photo, descriptor, section) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
+        [name, matric_no, level, department, course, photo, JSON.stringify(initialDescriptors), section]
+    );
+    const userId = rows[0].id;
 
     // Handle Class Enrollment
     if (classIds && Array.isArray(classIds)) {

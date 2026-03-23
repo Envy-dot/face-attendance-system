@@ -1,2 +1,3 @@
 server/.env
 *.postman_collection.json
+.Face_Attendance_System.postman_collection.json

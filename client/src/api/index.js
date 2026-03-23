@@ -119,10 +119,11 @@ export const api = {
         }
     },
     attendance: {
-        getLogs: async (search = '', sessionId = '') => {
+        getLogs: async (search = '', sessionId = '', filterDate = '') => {
             const params = new URLSearchParams();
             if (search) params.append('search', search);
             if (sessionId) params.append('sessionId', sessionId);
+            if (filterDate) params.append('date', filterDate);
             const qs = params.toString() ? `?${params.toString()}` : '';
             const res = await apiFetch(`${BASE_URL}/attendance${qs}`);
             return res.json();

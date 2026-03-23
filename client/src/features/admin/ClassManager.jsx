@@ -114,6 +114,7 @@ function ClassManager({ debouncedSearch = '', searchQuery, setSearchQuery }) {
                             <th>CODE</th>
                             <th>TITLE</th>
                             <th>DEPARTMENT</th>
+                            <th>STUDENTS ENROLLED</th>
                             <th style={{ textAlign: 'right' }}>ACTIONS</th>
                         </tr>
                     </thead>
@@ -127,6 +128,13 @@ function ClassManager({ debouncedSearch = '', searchQuery, setSearchQuery }) {
                                 <td style={{ fontWeight: 800, color: 'var(--primary)' }}>{cls.code}</td>
                                 <td style={{ fontWeight: 600 }}>{cls.name}</td>
                                 <td className="text-muted">{cls.department || '-'}</td>
+                                <td style={{ fontWeight: 600 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <div style={{ background: 'var(--bg-main)', padding: '0.2rem 0.6rem', borderRadius: '50px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                            {cls.enrolled_count || 0}
+                                        </div>
+                                    </div>
+                                </td>
                                 <td style={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                                     <button
                                         onClick={() => handleExport(cls.id)}
@@ -150,7 +158,7 @@ function ClassManager({ debouncedSearch = '', searchQuery, setSearchQuery }) {
                             cls.name.toLowerCase().includes(debouncedSearch.toLowerCase())
                         ).length === 0 && (
                                 <tr>
-                                    <td colSpan="5" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                                    <td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
                                         No classes matching your query were found.
                                     </td>
                                 </tr>

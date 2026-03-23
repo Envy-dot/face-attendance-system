@@ -77,6 +77,20 @@ function UserDetailModal({ user, onClose }) {
                         <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)' }}>{user.department || 'General'}</div>
                     </div>
 
+                    <div style={{ gridColumn: 'span 2' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                            <BookOpen size={14} />
+                            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Enrolled Classes</span>
+                        </div>
+                        <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--primary)', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            {user.enrolled_classes ? user.enrolled_classes.split(',').map((cls, i) => (
+                                <span key={i} className="badge badge-primary" style={{ padding: '0.3rem 0.8rem', borderRadius: '50px', fontSize: '0.8rem', background: 'rgba(56, 189, 248, 0.1)' }}>
+                                    {cls.trim()}
+                                </span>
+                            )) : <span style={{ color: 'var(--text-secondary)' }}>No classes enrolled</span>}
+                        </div>
+                    </div>
+
                     <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
                             <Calendar size={14} />

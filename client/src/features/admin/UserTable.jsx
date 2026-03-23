@@ -1,10 +1,10 @@
 import React from 'react';
-import { Trash2, User, IdCard } from 'lucide-react';
+import { Trash2, User, IdCard, Loader } from 'lucide-react';
 
-function UserTable({ users, onDeleteUser, onUserClick, currentPage, totalPages, onPageChange }) {
+function UserTable({ users, isFetching, onDeleteUser, onUserClick, currentPage, totalPages, onPageChange }) {
     return (
-        <div className="table-container" style={{ border: '1px solid var(--border-light)', borderRadius: 'var(--radius-lg)' }}>
-            <table>
+        <div className="table-container" style={{ border: '1px solid var(--border-light)', borderRadius: 'var(--radius-lg)', position: 'relative' }}>
+            <table style={{ opacity: isFetching ? 0.4 : 1, transition: 'opacity 0.2s', pointerEvents: isFetching ? 'none' : 'auto' }}>
                 <thead>
                     <tr>
                         <th>S/N</th>
@@ -27,7 +27,6 @@ function UserTable({ users, onDeleteUser, onUserClick, currentPage, totalPages, 
                             </td>
                             <td>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <div style={{ background: 'var(--bg-main)', padding: '6px', borderRadius: '50%', color: 'var(--primary)' }}><User size={14} /></div>
                                     <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{user.name}</div>
                                 </div>
                             </td>
@@ -65,6 +64,13 @@ function UserTable({ users, onDeleteUser, onUserClick, currentPage, totalPages, 
                 </tbody>
             </table>
 
+            {isFetching && (
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'var(--primary)' }}>
+                    <Loader className="spin" size={32} />
+                    <div style={{ marginTop: '0.5rem', fontWeight: 600, fontSize: '0.85rem' }}>Loading Students...</div>
+                </div>
+            )}
+
             {/* Pagination Controls */}
             {totalPages > 1 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderTop: '1px solid var(--border-light)', background: 'var(--bg-main)', borderBottomLeftRadius: 'var(--radius-lg)', borderBottomRightRadius: 'var(--radius-lg)' }}>
@@ -82,9 +88,9 @@ function UserTable({ users, onDeleteUser, onUserClick, currentPage, totalPages, 
                         </button>
                         <button
                             className="btn btn-secondary"
-                            disabled={currentPage === totalPages}
+                            disabled={currentPage === totalPages || isFetching}
                             onClick={() => onPageChange(currentPage + 1)}
-                            style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', opacity: currentPage === totalPages ? 0.5 : 1, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+                            style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', opacity: (currentPage === totalPages || isFetching) ? 0.5 : 1, cursor: (currentPage === totalPages || isFetching) ? 'not-allowed' : 'pointer' }}
                         >
                             Next
                         </button>

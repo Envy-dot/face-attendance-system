@@ -86,8 +86,8 @@ router.post('/', upload.any(), validate(markAttendanceSchema), async (req, res) 
 // Get attendance logs
 router.get('/', auth, async (req, res) => {
     try {
-        const { search, sessionId } = req.query;
-        const logs = await attendanceService.getAttendanceLogs(search, sessionId);
+        const { search, sessionId, date } = req.query;
+        const logs = await attendanceService.getAttendanceLogs(search, sessionId, date);
         res.json(logs);
     } catch (err) {
         res.status(500).json({ error: err.message });

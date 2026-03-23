@@ -32,7 +32,7 @@ function AttendanceLogs({ logs, onDeleteLog }) {
                             </td>
                             <td>
                                 <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{log.session_name}</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Terminal Sync</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{log.class_code || 'General Session'}</div>
                             </td>
                             <td>
                                 {log.in_time ? (
