@@ -28,7 +28,7 @@ function Home() {
                     </p>
 
                     <div className="flex-center button-gutter" style={{ marginBottom: '5rem' }}>
-                        <Link to="/attendance" className="btn btn-primary responsive-btn hidden md:inline-flex" style={{ padding: '1.2rem 3rem', fontSize: '1.1rem', borderRadius: '50px', boxShadow: '0 0 25px var(--primary-glow)', textDecoration: 'none' }}>
+                        <Link to="/attendance" className="btn btn-secondary responsive-btn hide-on-mobile" style={{ padding: '1.2rem 3rem', fontSize: '1.1rem', borderRadius: '50px', background: 'var(--bg-glass-strong)', backdropFilter: 'blur(10px)', border: '1px solid var(--border-light)', textDecoration: 'none', boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.05)' }}>
                             <Camera size={22} /> ENTER SCANNER
                         </Link>
                         <Link to="/register" className="btn btn-primary responsive-btn" style={{ padding: '1.2rem 3rem', fontSize: '1.1rem', borderRadius: '50px', boxShadow: '0 0 25px var(--primary-glow)', textDecoration: 'none' }}>
@@ -117,7 +117,7 @@ function Home() {
 
             {/* Footer */}
             <footer style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', borderTop: '1px solid var(--border-light)', marginTop: 'auto', fontWeight: 500 }}>
-                &copy; Facial Recognition-Based Attendance System.
+                &copy; 2026 Facial Recognition-Based Attendance System
             </footer>
         </div>
     );

@@ -526,6 +526,9 @@ tr:hover td {
     width: 18px;
     height: 18px;
   }
+  .hide-on-mobile {
+    display: none !important;
+  }
   .responsive-grid-2 {
     grid-template-columns: 1fr !important;
     gap: 1.5rem !important;
