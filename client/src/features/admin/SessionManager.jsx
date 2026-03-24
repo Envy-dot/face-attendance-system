@@ -232,7 +232,7 @@ function SessionManager({
                                 return (
                                     <tr>
                                         <td colSpan="6" style={{ textAlign: 'center', padding: '5rem 2rem', color: 'var(--text-muted)' }}>
-                                            <div style={{ fontWeight: 500 }}>Central intelligence repository is empty.</div>
+                                            <div style={{ fontWeight: 500 }}>Sessions repository is empty.</div>
                                         </td>
                                     </tr>
                                 );

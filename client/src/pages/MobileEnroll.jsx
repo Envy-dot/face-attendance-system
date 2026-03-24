@@ -474,6 +474,35 @@ function MobileEnroll() {
                 </div>
 
             </div>
+
+            {/* Mobile Full-Screen Status Popup */}
+            {(status === 'SUCCESS' || status === 'FAIL') && (
+                <div className="animate-fade" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', padding: '1rem' }}>
+                    <div className="animate-up" style={{ width: '100%', maxWidth: '340px', background: 'var(--bg-main)', borderRadius: '1.5rem', padding: '2rem', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)', border: `1px solid ${status === 'SUCCESS' ? 'var(--success)' : 'var(--warning)'}` }}>
+                        {status === 'SUCCESS' ? (
+                            <CheckCircle size={64} style={{ color: 'var(--success)', margin: '0 auto 1rem auto' }} />
+                        ) : (
+                            <AlertCircle size={64} style={{ color: 'var(--warning)', margin: '0 auto 1rem auto' }} />
+                        )}
+                        <h3 style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-main)', marginBottom: '0.5rem' }}>
+                            {status === 'SUCCESS' ? 'Enrollment Complete!' : 'Action Required'}
+                        </h3>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.5, margin: '0 0 1.5rem 0' }}>
+                            {msg.text || (status === 'SUCCESS' ? 'Face successfully registered.' : 'Enrollment failed.')}
+                        </p>
+                        <button 
+                            className={`btn ${status === 'SUCCESS' ? 'btn-success' : 'btn-warning'}`}
+                            style={{ width: '100%', padding: '1rem', borderRadius: '1rem', fontSize: '1rem', fontWeight: 800, background: status === 'SUCCESS' ? 'var(--success)' : 'var(--warning)', color: 'white', border: 'none' }}
+                            onClick={() => {
+                                setStatus('IDLE');
+                                setMsg({ type: '', text: '' });
+                            }}
+                        >
+                            {status === 'SUCCESS' ? 'DONE' : 'TRY AGAIN'}
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
