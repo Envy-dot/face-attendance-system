@@ -269,7 +269,7 @@ function SessionManager({
                                                 style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
                                                 title="Export Matrix"
                                             >
-                                                <LogIn size={14} /> EXPORT
+                                                <LogIn size={14} /> EXPOR
                                             </button>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); onDeleteSession(hist.id); }}
